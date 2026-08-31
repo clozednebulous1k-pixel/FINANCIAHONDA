@@ -98,12 +98,7 @@ main {
 }
 
 .view {
-  display: none;
   animation: rise 0.28s ease;
-}
-
-.view.is-active {
-  display: block;
 }
 
 @keyframes rise {
@@ -236,7 +231,6 @@ h1 {
 .progress span {
   display: block;
   height: 100%;
-  width: 0;
   background: var(--red);
   transition: width 0.25s ease;
 }
