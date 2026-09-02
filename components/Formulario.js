@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CONFIG, FLUXOS } from "../lib/formulario";
 import { criarLead } from "../lib/leads";
 import { trackPixel } from "../lib/pixel";
-import { CNH_OPCOES, LIMITES } from "../lib/security";
+import { CNH_OPCOES, LIMITES, celularWhatsapp, formatarWhatsapp } from "../lib/security";
 import LoginButton from "./LoginButton";
 
 const OPCOES = [
@@ -73,6 +73,7 @@ export default function Formulario() {
   const [whatsappCliente, setWhatsappCliente] = useState("");
   const [enviandoDados, setEnviandoDados] = useState(false);
   const [dadosSalvos, setDadosSalvos] = useState(false);
+  const [confirmarTelefone, setConfirmarTelefone] = useState(false);
   const [erroDados, setErroDados] = useState("");
 
   const perguntas = FLUXOS[tipo] || [];
@@ -87,6 +88,7 @@ export default function Formulario() {
     setRespostas({});
     setEnviandoDados(false);
     setDadosSalvos(false);
+    setConfirmarTelefone(false);
     setErroDados("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -101,6 +103,7 @@ export default function Formulario() {
     setPasso(0);
     setRespostas({});
     setDadosSalvos(false);
+    setConfirmarTelefone(false);
     setErroDados("");
     setTela("quiz");
     trackPixel("ViewContent", { content_name: novoTipo, content_category: "formulario" });
@@ -134,9 +137,19 @@ export default function Formulario() {
     if (dadosSalvos || enviandoDados) return;
     setErroDados("");
     const nome = nomeCliente.trim();
-    const whatsapp = whatsappCliente.trim();
-    if (nome.length < 2 || whatsapp.replace(/\D/g, "").length < 10) {
-      setErroDados("Preencha seu nome e um WhatsApp válido.");
+    const whatsapp = celularWhatsapp(whatsappCliente);
+    if (nome.length < 2) {
+      setErroDados("Preencha seu nome.");
+      return;
+    }
+    if (!whatsapp) {
+      setErroDados("Confira o WhatsApp: DDD + 9 + 8 números. Ex: (11) 99999-9999.");
+      setConfirmarTelefone(false);
+      return;
+    }
+    if (!confirmarTelefone) {
+      setWhatsappCliente(formatarWhatsapp(whatsapp));
+      setConfirmarTelefone(true);
       return;
     }
 
@@ -158,8 +171,9 @@ export default function Formulario() {
         respostas,
       });
       window.localStorage.setItem("honda-cliente-nome", nome);
-      window.localStorage.setItem("honda-cliente-whatsapp", whatsapp);
+      window.localStorage.setItem("honda-cliente-whatsapp", formatarWhatsapp(whatsapp));
       setDadosSalvos(true);
+      setConfirmarTelefone(false);
       trackPixel("CompleteRegistration", { content_name: tipo });
     } catch (error) {
       setErroDados("Não foi possível salvar. Tente de novo ou envie pelo WhatsApp.");
@@ -268,24 +282,54 @@ export default function Formulario() {
                       placeholder="Nome completo"
                     />
                   </label>
-                  <label>
-                    Seu WhatsApp
+                  <label className={`campo-telefone ${celularWhatsapp(whatsappCliente) ? "is-ok" : whatsappCliente ? "is-bad" : ""}`}>
+                    Confira seu WhatsApp
                     <input
                       type="tel"
                       name="tel"
                       autoComplete="tel-national"
                       inputMode="tel"
                       required
-                      maxLength={LIMITES.whatsapp}
+                      maxLength={16}
                       value={whatsappCliente}
-                      onChange={(e) => setWhatsappCliente(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmarTelefone(false);
+                        setWhatsappCliente(formatarWhatsapp(e.target.value));
+                      }}
                       placeholder="(11) 99999-9999"
                     />
                   </label>
+                  {whatsappCliente && (
+                    <p className={`telefone-status ${celularWhatsapp(whatsappCliente) ? "is-ok" : "is-bad"}`}>
+                      {celularWhatsapp(whatsappCliente)
+                        ? `Número válido: ${formatarWhatsapp(whatsappCliente)}`
+                        : "WhatsApp incompleto. Use DDD + 9 + 8 números."}
+                    </p>
+                  )}
+                  {confirmarTelefone && (
+                    <div className="telefone-confirme">
+                      <p>Confira o número antes de enviar</p>
+                      <strong>{formatarWhatsapp(whatsappCliente)}</strong>
+                      <p>Este WhatsApp está certo?</p>
+                    </div>
+                  )}
                   {erroDados && <p className="erro">{erroDados}</p>}
                   <button className="btn-chamada" type="submit" disabled={enviandoDados}>
-                    {enviandoDados ? "Enviando..." : "Enviar dados"}
+                    {enviandoDados
+                      ? "Enviando..."
+                      : confirmarTelefone
+                        ? "Sim, número certo · Enviar"
+                        : "Verificar e enviar dados"}
                   </button>
+                  {confirmarTelefone && (
+                    <button
+                      className="btn-ghost"
+                      type="button"
+                      onClick={() => setConfirmarTelefone(false)}
+                    >
+                      Corrigir número
+                    </button>
+                  )}
                 </>
               )}
             </form>
