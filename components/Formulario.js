@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CONFIG, FLUXOS } from "../lib/formulario";
 import { trackPixel } from "../lib/pixel";
+import LoginButton from "./LoginButton";
 
 const OPCOES = [
   {
@@ -114,6 +115,7 @@ export default function Formulario() {
             <small>Atendimento ao cliente</small>
           </span>
         </button>
+        <LoginButton />
       </header>
 
       <main>
