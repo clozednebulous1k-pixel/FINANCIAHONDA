@@ -11,11 +11,17 @@ service cloud.firestore {
       return valor is string && valor.size() <= max;
     }
 
-    function leadValido() {
-      let d = request.resource.data;
+    function statusOk(valor) {
+      return valor in [
+        'novo', 'chamou', 'aguardando_resposta', 'nao_atendeu',
+        'em_atendimento', 'visita', 'ganho', 'perdido'
+      ];
+    }
+
+    function camposOk(d) {
       return d.keys().hasOnly([
           'nome', 'whatsapp', 'tipo', 'modelo', 'observacao',
-          'origem', 'status', 'respostas', 'createdAt'
+          'origem', 'status', 'respostas', 'createdAt', 'cnh'
         ])
         && texto(d.nome, 120) && d.nome.size() > 0
         && texto(d.whatsapp, 20) && d.whatsapp.size() >= 10
@@ -23,20 +29,18 @@ service cloud.firestore {
         && texto(d.modelo, 80)
         && texto(d.observacao, 500)
         && d.origem in ['trafego-pago', 'formulario']
-        && d.status == 'novo'
+        && statusOk(d.status)
+        && texto(d.cnh, 20)
         && d.respostas is map
         && d.createdAt is timestamp;
     }
 
-    function soStatus() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-        && request.resource.data.status in ['novo', 'em_atendimento', 'visita', 'ganho', 'perdido'];
-    }
-
     match /leads/{leadId} {
       allow read: if vendedor();
-      allow create: if vendedor() && leadValido();
-      allow update: if vendedor() && soStatus();
+      allow create: if vendedor() && camposOk(request.resource.data) && request.resource.data.status == 'novo';
+      allow update: if vendedor()
+        && camposOk(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if false;
     }
   }

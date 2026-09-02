@@ -439,6 +439,16 @@ select {
   gap: 16px;
   padding: 14px 0;
   border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.span-full {
+  width: 100%;
+}
+
+.lead-edit-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .lead-item:first-child {
