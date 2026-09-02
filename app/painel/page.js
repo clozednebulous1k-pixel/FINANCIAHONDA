@@ -179,8 +179,8 @@ export default function PainelPage() {
     }
   }
 
-  async function salvarEdicao(event) {
-    event.preventDefault();
+  async function salvarEdicao() {
+    if (!editandoId) return;
     setErro("");
     try {
       await atualizarLead(editandoId, edicao);
@@ -188,6 +188,14 @@ export default function PainelPage() {
     } catch (error) {
       setErro("Não foi possível atualizar o lead. Publique as regras novas no Firebase.");
     }
+  }
+
+  function teclaEdicao(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      salvarEdicao();
+    }
+    if (event.key === "Escape") setEditandoId("");
   }
 
   if (loading || !user) {
@@ -267,15 +275,87 @@ export default function PainelPage() {
                 {visiveis.map((lead) => (
                   <tr key={lead.id} className={editandoId === lead.id ? "is-edit" : ""}>
                     {editandoId === lead.id ? (
-                      <td colSpan={6}>
-                        <form className="lead-form" onSubmit={salvarEdicao}>
-                          <CamposLead form={edicao} setForm={setEdicao} incluirStatus />
-                          <div className="lead-edit-actions span-2">
-                            <button className="btn-primary" type="submit">Salvar</button>
-                            <button className="btn-ghost" type="button" onClick={() => setEditandoId("")}>Cancelar</button>
+                      <>
+                        <td>
+                          <div className="cell-pair">
+                            <input
+                              className="cell-input"
+                              autoFocus
+                              maxLength={LIMITES.nome}
+                              value={edicao.nome}
+                              onChange={(e) => setEdicao({ ...edicao, nome: e.target.value })}
+                              onKeyDown={teclaEdicao}
+                              placeholder="Nome"
+                            />
+                            <input
+                              className="cell-input"
+                              maxLength={LIMITES.modelo}
+                              value={edicao.modelo}
+                              onChange={(e) => setEdicao({ ...edicao, modelo: e.target.value })}
+                              onKeyDown={teclaEdicao}
+                              placeholder="Moto"
+                            />
                           </div>
-                        </form>
-                      </td>
+                        </td>
+                        <td>
+                          <div className="cell-pair">
+                            <input
+                              className="cell-input"
+                              inputMode="tel"
+                              maxLength={LIMITES.whatsapp}
+                              value={edicao.whatsapp}
+                              onChange={(e) => setEdicao({ ...edicao, whatsapp: e.target.value })}
+                              onKeyDown={teclaEdicao}
+                              placeholder="WhatsApp"
+                            />
+                            <input
+                              className="cell-input"
+                              maxLength={LIMITES.observacao}
+                              value={edicao.observacao}
+                              onChange={(e) => setEdicao({ ...edicao, observacao: e.target.value })}
+                              onKeyDown={teclaEdicao}
+                              placeholder="Obs"
+                            />
+                          </div>
+                        </td>
+                        <td>
+                          <select
+                            className="cell-input"
+                            value={edicao.cnh}
+                            onChange={(e) => setEdicao({ ...edicao, cnh: e.target.value })}
+                          >
+                            {CNH_OPCOES.map((opcao) => (
+                              <option key={opcao}>{opcao}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <select
+                            className="cell-input"
+                            value={edicao.tipo}
+                            onChange={(e) => setEdicao({ ...edicao, tipo: e.target.value })}
+                          >
+                            {TIPOS_LEAD.map((tipo) => (
+                              <option key={tipo}>{tipo}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <select
+                            className={`status-select st-${edicao.status || "novo"}`}
+                            value={edicao.status || "novo"}
+                            onChange={(e) => setEdicao({ ...edicao, status: e.target.value })}
+                          >
+                            {STATUS.map((item) => (
+                              <option key={item.id} value={item.id}>{item.label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="row-actions">
+                          <button type="button" className="is-save" onClick={salvarEdicao}>Salvar</button>
+                          <button type="button" onClick={() => setEditandoId("")}>Cancelar</button>
+                        </td>
+                      </>
                     ) : (
                       <>
                         <td>

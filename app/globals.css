@@ -446,6 +446,34 @@ select {
   background: #fafafa;
 }
 
+.lead-table tr.is-edit {
+  background: #fff8f6;
+}
+
+.cell-pair {
+  display: flex;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.lead-table .cell-input {
+  height: 32px;
+  width: 100%;
+  min-width: 72px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  font: inherit;
+  font-size: 13px;
+}
+
+.row-actions .is-save {
+  background: var(--red);
+  color: var(--white);
+  border-color: var(--red);
+}
+
 .lead-table .nowrap {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -500,6 +528,22 @@ select {
   display: grid;
   gap: 14px;
   max-width: 420px;
+}
+
+.lembrar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lembrar input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--red);
 }
 
 .painel-actions {

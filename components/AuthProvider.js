@@ -1,7 +1,14 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { auth, firebasePronto } from "../lib/firebase";
 import { emailPermitido } from "../lib/security";
 
@@ -40,8 +47,9 @@ export function AuthProvider({ children }) {
       user,
       loading,
       pronto,
-      login: (email, senha) => {
+      login: async (email, senha, manterConectado = true) => {
         if (!auth) return Promise.reject(new Error("Firebase não configurado"));
+        await setPersistence(auth, manterConectado ? browserLocalPersistence : browserSessionPersistence);
         return signInWithEmailAndPassword(auth, email, senha);
       },
       logout: () => (auth ? signOut(auth) : Promise.resolve()),

@@ -6,14 +6,29 @@ import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
 import { LIMITES, emailPermitido, validarEmail } from "../../lib/security";
 
+const CHAVE_EMAIL = "honda-login-email";
+const CHAVE_MANTER = "honda-login-manter";
+
 export default function LoginPage() {
   const router = useRouter();
-  const { login, pronto } = useAuth();
+  const { login, pronto, user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [manter, setManter] = useState(true);
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [falhas, setFalhas] = useState(0);
+
+  useEffect(() => {
+    const emailSalvo = window.localStorage.getItem(CHAVE_EMAIL) || "";
+    const manterSalvo = window.localStorage.getItem(CHAVE_MANTER);
+    setEmail(emailSalvo);
+    setManter(manterSalvo !== "0");
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user) router.replace("/painel");
+  }, [loading, user, router]);
 
   useEffect(() => {
     if (falhas < 5) return undefined;
@@ -47,7 +62,14 @@ export default function LoginPage() {
         setErro("Não foi possível validar o acesso. Tente de novo.");
         return;
       }
-      await login(emailLimpo, senha);
+      if (manter) {
+        window.localStorage.setItem(CHAVE_EMAIL, emailLimpo);
+        window.localStorage.setItem(CHAVE_MANTER, "1");
+      } else {
+        window.localStorage.removeItem(CHAVE_EMAIL);
+        window.localStorage.setItem(CHAVE_MANTER, "0");
+      }
+      await login(emailLimpo, senha, manter);
       router.replace("/painel");
     } catch (error) {
       const novasFalhas = falhas + 1;
@@ -95,6 +117,14 @@ export default function LoginPage() {
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
           />
+        </label>
+        <label className="lembrar">
+          <input
+            type="checkbox"
+            checked={manter}
+            onChange={(e) => setManter(e.target.checked)}
+          />
+          Salvar senha neste aparelho
         </label>
         {erro && <p className="erro">{erro}</p>}
         <button className="btn-primary" type="submit" disabled={enviando || !pronto || falhas >= 5}>
