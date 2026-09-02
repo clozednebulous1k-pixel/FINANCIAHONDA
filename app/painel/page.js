@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
-import { atualizarLead, atualizarStatus, criarLead, importarLeadsCnh, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
+import { atualizarLead, atualizarStatus, criarLead, excluirLead, importarLeadsCnh, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
 import { CNH_OPCOES, LIMITES, TIPOS_LEAD } from "../../lib/security";
 
 const VAZIO = {
@@ -176,6 +176,17 @@ export default function PainelPage() {
       setErro("Não foi possível salvar o lead. Confira as regras do Firebase.");
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function apagar(lead) {
+    if (!window.confirm(`Apagar o lead ${lead.nome}?`)) return;
+    setErro("");
+    try {
+      await excluirLead(lead.id);
+      if (editandoId === lead.id) setEditandoId("");
+    } catch (error) {
+      setErro("Não foi possível apagar. Publique as regras novas no Firebase e atualize a página.");
     }
   }
 
@@ -387,6 +398,9 @@ export default function PainelPage() {
                             }}
                           >
                             Editar
+                          </button>
+                          <button type="button" className="is-del" onClick={() => apagar(lead)}>
+                            Apagar
                           </button>
                         </td>
                       </>

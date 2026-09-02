@@ -474,6 +474,11 @@ select {
   border-color: var(--red);
 }
 
+.row-actions .is-del {
+  color: var(--red);
+  border-color: #f0c0c0;
+}
+
 .lead-table .nowrap {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;

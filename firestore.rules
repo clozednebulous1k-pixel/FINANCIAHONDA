@@ -41,7 +41,7 @@ service cloud.firestore {
       allow update: if vendedor()
         && camposOk(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt;
-      allow delete: if false;
+      allow delete: if vendedor();
     }
   }
 }
