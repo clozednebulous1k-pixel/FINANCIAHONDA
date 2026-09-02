@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
-import { atualizarLead, atualizarStatus, criarLead, excluirLead, importarLeadsCnh, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
+import { atualizarLead, atualizarStatus, criarLead, excluirLead, importarLeadsCnh, marcarTodosConstatando, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
 import { CNH_OPCOES, LIMITES, TIPOS_LEAD } from "../../lib/security";
 
 const VAZIO = {
   nome: "",
   whatsapp: "",
-  tipo: "FINANCIAMENTO",
+  tipo: "CONSTATANDO",
   modelo: "",
   observacao: "",
   cnh: "Sim",
@@ -161,6 +161,7 @@ export default function PainelPage() {
   useEffect(() => {
     if (!user || !pronto) return undefined;
     importarLeadsCnh().catch(() => {});
+    marcarTodosConstatando().catch(() => {});
     return undefined;
   }, [user, pronto]);
 
