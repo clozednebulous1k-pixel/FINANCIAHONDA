@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CONFIG, FLUXOS } from "../lib/formulario";
+import { criarLead } from "../lib/leads";
 import { trackPixel } from "../lib/pixel";
+import { CNH_OPCOES, LIMITES } from "../lib/security";
 import LoginButton from "./LoginButton";
 
 const OPCOES = [
@@ -44,8 +46,10 @@ const OPCOES = [
   },
 ];
 
-function montarMensagem(tipo, respostas) {
+function montarMensagem(tipo, respostas, contato = {}) {
   const linhas = [`*Novo atendimento ${CONFIG.nomeLoja}*`, `Interesse: ${tipo}`, ""];
+  if (contato.nome) linhas.push(`Nome: ${contato.nome}`);
+  if (contato.whatsapp) linhas.push(`WhatsApp: ${contato.whatsapp}`);
   Object.entries(respostas).forEach(([chave, valor]) => {
     linhas.push(`${chave}: ${valor}`);
   });
@@ -53,15 +57,27 @@ function montarMensagem(tipo, respostas) {
   return linhas.join("\n");
 }
 
+function observacaoDasRespostas(respostas) {
+  return Object.entries(respostas)
+    .map(([chave, valor]) => `${chave}: ${valor}`)
+    .join(" · ")
+    .slice(0, LIMITES.observacao);
+}
+
 export default function Formulario() {
   const [tela, setTela] = useState("home");
   const [tipo, setTipo] = useState("");
   const [passo, setPasso] = useState(0);
   const [respostas, setRespostas] = useState({});
+  const [nomeCliente, setNomeCliente] = useState("");
+  const [whatsappCliente, setWhatsappCliente] = useState("");
+  const [enviandoDados, setEnviandoDados] = useState(false);
+  const [dadosSalvos, setDadosSalvos] = useState(false);
+  const [erroDados, setErroDados] = useState("");
 
   const perguntas = FLUXOS[tipo] || [];
   const atual = perguntas[passo];
-  const mensagem = montarMensagem(tipo, respostas);
+  const mensagem = montarMensagem(tipo, respostas, { nome: nomeCliente, whatsapp: whatsappCliente });
   const whatsappHref = `https://wa.me/${CONFIG.whatsappLoja}?text=${encodeURIComponent(mensagem)}`;
 
   function irHome() {
@@ -69,13 +85,23 @@ export default function Formulario() {
     setTipo("");
     setPasso(0);
     setRespostas({});
+    setEnviandoDados(false);
+    setDadosSalvos(false);
+    setErroDados("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  useEffect(() => {
+    setNomeCliente(window.localStorage.getItem("honda-cliente-nome") || "");
+    setWhatsappCliente(window.localStorage.getItem("honda-cliente-whatsapp") || "");
+  }, []);
 
   function iniciar(novoTipo) {
     setTipo(novoTipo);
     setPasso(0);
     setRespostas({});
+    setDadosSalvos(false);
+    setErroDados("");
     setTela("quiz");
     trackPixel("ViewContent", { content_name: novoTipo, content_category: "formulario" });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -101,6 +127,45 @@ export default function Formulario() {
     }
     setPasso(passo - 1);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function salvarDados(event) {
+    event.preventDefault();
+    if (dadosSalvos || enviandoDados) return;
+    setErroDados("");
+    const nome = nomeCliente.trim();
+    const whatsapp = whatsappCliente.trim();
+    if (nome.length < 2 || whatsapp.replace(/\D/g, "").length < 10) {
+      setErroDados("Preencha seu nome e um WhatsApp válido.");
+      return;
+    }
+
+    setEnviandoDados(true);
+    try {
+      const guarda = await fetch("/api/lead-guard", { method: "POST" });
+      if (guarda.status === 429) {
+        setErroDados("Muitas tentativas. Espere alguns minutos.");
+        return;
+      }
+      await criarLead({
+        nome,
+        whatsapp,
+        tipo,
+        modelo: respostas.Modelo || "",
+        observacao: observacaoDasRespostas(respostas),
+        origem: "formulario",
+        cnh: CNH_OPCOES.includes(respostas.CNH) ? respostas.CNH : "Não",
+        respostas,
+      });
+      window.localStorage.setItem("honda-cliente-nome", nome);
+      window.localStorage.setItem("honda-cliente-whatsapp", whatsapp);
+      setDadosSalvos(true);
+      trackPixel("CompleteRegistration", { content_name: tipo });
+    } catch (error) {
+      setErroDados("Não foi possível salvar. Tente de novo ou envie pelo WhatsApp.");
+    } finally {
+      setEnviandoDados(false);
+    }
   }
 
   return (
@@ -179,6 +244,52 @@ export default function Formulario() {
               </svg>
               Enviar no WhatsApp
             </a>
+
+            <form className="chamada-box" autoComplete="on" onSubmit={salvarDados}>
+              <p className="chamada-tag">Quer que o vendedor te chame?</p>
+              <h2>Adicione seu nome e WhatsApp</h2>
+              <p>Se o celular já tiver esses dados, o preenchimento automático completa para você.</p>
+              {dadosSalvos ? (
+                <p className="chamada-ok">Pronto! O consultor vai te chamar no WhatsApp.</p>
+              ) : (
+                <>
+                  <label>
+                    Seu nome
+                    <input
+                      type="text"
+                      name="name"
+                      autoComplete="name"
+                      autoCapitalize="words"
+                      autoCorrect="off"
+                      required
+                      maxLength={LIMITES.nome}
+                      value={nomeCliente}
+                      onChange={(e) => setNomeCliente(e.target.value)}
+                      placeholder="Nome completo"
+                    />
+                  </label>
+                  <label>
+                    Seu WhatsApp
+                    <input
+                      type="tel"
+                      name="tel"
+                      autoComplete="tel-national"
+                      inputMode="tel"
+                      required
+                      maxLength={LIMITES.whatsapp}
+                      value={whatsappCliente}
+                      onChange={(e) => setWhatsappCliente(e.target.value)}
+                      placeholder="(11) 99999-9999"
+                    />
+                  </label>
+                  {erroDados && <p className="erro">{erroDados}</p>}
+                  <button className="btn-chamada" type="submit" disabled={enviandoDados}>
+                    {enviandoDados ? "Enviando..." : "Enviar dados"}
+                  </button>
+                </>
+              )}
+            </form>
+
             <button className="btn-ghost" type="button" onClick={irHome}>Começar de novo</button>
           </section>
         )}

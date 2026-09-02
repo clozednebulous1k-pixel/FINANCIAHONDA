@@ -37,7 +37,15 @@ service cloud.firestore {
 
     match /leads/{leadId} {
       allow read: if vendedor();
-      allow create: if vendedor() && camposOk(request.resource.data) && request.resource.data.status == 'novo';
+      allow create: if camposOk(request.resource.data)
+        && request.resource.data.status == 'novo'
+        && (
+          vendedor()
+          || (
+            request.auth == null
+            && request.resource.data.origem == 'formulario'
+          )
+        );
       allow update: if vendedor()
         && camposOk(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt;
