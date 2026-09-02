@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
-import { LIMITES, validarEmail } from "../../lib/security";
+import { LIMITES, emailPermitido, validarEmail } from "../../lib/security";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,7 +31,7 @@ export default function LoginPage() {
     }
 
     const emailLimpo = validarEmail(email);
-    if (!emailLimpo || senha.length < 6 || senha.length > LIMITES.senha) {
+    if (!emailLimpo || !emailPermitido(emailLimpo) || senha.length < 6 || senha.length > LIMITES.senha) {
       setErro("E-mail ou senha inválidos.");
       return;
     }

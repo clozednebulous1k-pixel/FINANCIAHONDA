@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, firebasePronto } from "../lib/firebase";
+import { emailPermitido } from "../lib/security";
 
 const AuthContext = createContext({
   user: null,
@@ -22,7 +23,13 @@ export function AuthProvider({ children }) {
       setLoading(false);
       return undefined;
     }
-    return onAuthStateChanged(auth, (atual) => {
+    return onAuthStateChanged(auth, async (atual) => {
+      if (atual && !emailPermitido(atual.email)) {
+        await signOut(auth);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
       setUser(atual);
       setLoading(false);
     });

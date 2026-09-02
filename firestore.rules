@@ -1,8 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function logado() {
-      return request.auth != null;
+    function vendedor() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() == 'matheus.honda@gmail.com';
     }
 
     function texto(valor, max) {
@@ -32,9 +34,9 @@ service cloud.firestore {
     }
 
     match /leads/{leadId} {
-      allow read: if logado();
-      allow create: if logado() && leadValido();
-      allow update: if logado() && soStatus();
+      allow read: if vendedor();
+      allow create: if vendedor() && leadValido();
+      allow update: if vendedor() && soStatus();
       allow delete: if false;
     }
   }
