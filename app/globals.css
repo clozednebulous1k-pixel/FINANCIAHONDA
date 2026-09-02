@@ -347,23 +347,159 @@ select {
 
 .auth-page,
 .painel {
-  max-width: 980px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 28px 20px 48px;
+  padding: 16px 16px 32px;
+}
+
+.painel-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.painel-top h1 {
+  margin: 0;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.painel-top .eyebrow {
+  margin: 0 0 2px;
+}
+
+.count-pill {
+  display: inline-flex;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 99px;
+  background: var(--red);
+  color: var(--white);
+  font-size: 13px;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.status-tabs button {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--white);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.status-tabs button.is-on {
+  background: var(--ink);
+  color: var(--white);
+  border-color: var(--ink);
+}
+
+.table-card .lead {
+  padding: 12px;
+}
+
+.lead-table-wrap {
+  overflow-x: auto;
+}
+
+.lead-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.lead-table th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 10px;
+  background: #f3f4f6;
+  font-weight: 700;
+}
+
+.lead-table td {
+  padding: 6px 10px;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.lead-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.lead-table .nowrap {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.status-select {
+  height: 32px !important;
+  padding: 0 8px !important;
+  min-width: 160px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.row-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.row-actions a,
+.row-actions button {
+  height: 28px;
+  padding: 0 8px;
+  margin-left: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.row-actions a {
+  background: var(--whatsapp);
+  color: var(--white);
+  border-color: var(--whatsapp);
+}
+
+.painel-card h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
 }
 
 .auth-form {
   display: grid;
   gap: 14px;
   max-width: 420px;
-}
-
-.painel-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  margin-bottom: 24px;
 }
 
 .painel-actions {
@@ -374,13 +510,14 @@ select {
 
 .painel-actions a,
 .painel-actions button {
-  height: 40px;
-  padding: 0 14px;
+  height: 32px;
+  padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--white);
   color: inherit;
   font: inherit;
+  font-size: 13px;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
@@ -391,10 +528,10 @@ select {
 .painel-card {
   background: var(--white);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 14px;
   box-shadow: var(--shadow);
-  padding: 20px;
-  margin-bottom: 16px;
+  padding: 14px;
+  margin-bottom: 12px;
 }
 
 .painel-card h2 {
