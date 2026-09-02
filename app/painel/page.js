@@ -35,6 +35,7 @@ function formDoLead(lead) {
     tipo: lead.tipo || "CONSTATANDO",
     modelo: lead.modelo || "",
     observacao: lead.observacao || "",
+    origem: lead.origem || "trafego-pago",
     cnh: lead.cnh || "Sim",
     status: lead.status || "novo",
   };
@@ -146,9 +147,7 @@ export default function PainelPage() {
 
   useEffect(() => {
     if (!user || !pronto) return undefined;
-    importarLeadsCnh().catch(() => {
-      setErro("A lista aparece e some se as regras do Firebase estiverem desatualizadas. Publique o firestore.rules e atualize a página.");
-    });
+    importarLeadsCnh().catch(() => {});
     return undefined;
   }, [user, pronto]);
 
@@ -170,8 +169,9 @@ export default function PainelPage() {
     setErro("");
     setSalvando(true);
     try {
-      await criarLead(form);
+      await criarLead({ ...form, origem: "formulario" });
       setForm(VAZIO);
+      setFiltro("todos");
     } catch (error) {
       setErro("Não foi possível salvar o lead. Confira as regras do Firebase.");
     } finally {
