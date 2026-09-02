@@ -28,6 +28,19 @@ function statusLabel(id) {
   return STATUS.find((item) => item.id === id)?.label || "Novo";
 }
 
+function dataLead(valor) {
+  const ms = valor?.toMillis?.() || 0;
+  if (!ms) return "—";
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(ms));
+}
+
 function formDoLead(lead) {
   return {
     nome: lead.nome || "",
@@ -275,6 +288,7 @@ export default function PainelPage() {
               <thead>
                 <tr>
                   <th>Nome</th>
+                  <th>Adicionado</th>
                   <th>WhatsApp</th>
                   <th>CNH</th>
                   <th>Tipo</th>
@@ -308,6 +322,7 @@ export default function PainelPage() {
                             />
                           </div>
                         </td>
+                        <td className="nowrap muted">{dataLead(lead.createdAt)}</td>
                         <td>
                           <div className="cell-pair">
                             <input
@@ -373,6 +388,7 @@ export default function PainelPage() {
                           <strong>{lead.nome}</strong>
                           {lead.modelo ? <span className="muted"> {lead.modelo}</span> : null}
                         </td>
+                        <td className="nowrap muted">{dataLead(lead.createdAt)}</td>
                         <td className="nowrap">{lead.whatsapp}</td>
                         <td>{lead.cnh || "—"}</td>
                         <td>{tipoCurto(lead.tipo)}</td>
