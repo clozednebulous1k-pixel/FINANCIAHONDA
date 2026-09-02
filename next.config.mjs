@@ -1,7 +1,19 @@
+function envFirebase(nome) {
+  return process.env[`NEXT_FIREBASE_${nome}`] || process.env[`NEXT_PUBLIC_FIREBASE_${nome}`] || "";
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  env: {
+    NEXT_PUBLIC_FIREBASE_API_KEY: envFirebase("API_KEY"),
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: envFirebase("AUTH_DOMAIN"),
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: envFirebase("PROJECT_ID"),
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: envFirebase("STORAGE_BUCKET"),
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: envFirebase("MESSAGING_SENDER_ID"),
+    NEXT_PUBLIC_FIREBASE_APP_ID: envFirebase("APP_ID"),
+  },
   async headers() {
     return [
       {
