@@ -30,7 +30,7 @@ service cloud.firestore {
         && texto(d.observacao, 500)
         && d.origem in ['trafego-pago', 'formulario']
         && statusOk(d.status)
-        && texto(d.cnh, 20)
+        && (!d.keys().hasAny(['cnh']) || texto(d.cnh, 20))
         && d.respostas is map
         && d.createdAt is timestamp;
     }

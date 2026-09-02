@@ -115,6 +115,7 @@ export default function PainelPage() {
   const router = useRouter();
   const { user, loading, logout, pronto } = useAuth();
   const [leads, setLeads] = useState([]);
+  const [carregandoLista, setCarregandoLista] = useState(true);
   const [filtro, setFiltro] = useState("todos");
   const [form, setForm] = useState(VAZIO);
   const [editandoId, setEditandoId] = useState("");
@@ -128,12 +129,24 @@ export default function PainelPage() {
 
   useEffect(() => {
     if (!user) return undefined;
-    return ouvirLeads(setLeads);
+    setCarregandoLista(true);
+    return ouvirLeads(
+      (lista) => {
+        setLeads(lista);
+        setCarregandoLista(false);
+      },
+      () => {
+        setCarregandoLista(false);
+        setErro("Sem permissão para ler os leads. Publique as regras novas no Firebase e entre de novo.");
+      },
+    );
   }, [user]);
 
   useEffect(() => {
     if (!user || !pronto) return undefined;
-    importarLeadsCnh().catch(() => {});
+    importarLeadsCnh().catch(() => {
+      setErro("A lista aparece e some se as regras do Firebase estiverem desatualizadas. Publique o firestore.rules e atualize a página.");
+    });
     return undefined;
   }, [user, pronto]);
 
@@ -213,8 +226,10 @@ export default function PainelPage() {
           </select>
         </div>
 
-        {visiveis.length === 0 ? (
-          <p className="lead">Carregando leads... Se não aparecer, publique as regras novas do Firebase e atualize a página.</p>
+        {carregandoLista ? (
+          <p className="lead">Carregando leads...</p>
+        ) : visiveis.length === 0 ? (
+          <p className="lead">Nenhum lead neste filtro. Se a lista deveria aparecer, publique as regras do Firebase e atualize a página.</p>
         ) : (
           <div className="lead-list">
             {visiveis.map((lead) => (

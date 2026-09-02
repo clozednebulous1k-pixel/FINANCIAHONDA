@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
       return undefined;
     }
     return onAuthStateChanged(auth, async (atual) => {
-      if (atual && !emailPermitido(atual.email)) {
+      if (atual?.email && !emailPermitido(atual.email)) {
         await signOut(auth);
         setUser(null);
         setLoading(false);
