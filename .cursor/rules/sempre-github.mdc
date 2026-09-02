@@ -1,0 +1,15 @@
+---
+description: Sempre enviar o trabalho concluído para o GitHub
+alwaysApply: true
+---
+
+# Sempre mandar para o GitHub
+
+Quando uma tarefa de código terminar e houver alterações, sempre:
+
+1. Fazer commit dos arquivos relevantes (nunca senhas, `.env` ou secrets).
+2. Enviar para o `origin` da branch atual com `git push origin HEAD`.
+
+Não esperar o usuário dizer "mande". Nesta loja, isso vale mais do que a regra geral de só commitar quando pedirem.
+
+Responder em português e avisar se o commit ou o push falhar.
