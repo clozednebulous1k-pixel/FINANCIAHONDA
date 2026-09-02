@@ -25,7 +25,7 @@ service cloud.firestore {
         ])
         && texto(d.nome, 120) && d.nome.size() > 0
         && texto(d.whatsapp, 20) && d.whatsapp.size() >= 10
-        && d.tipo in ['FINANCIAMENTO', 'CONSÓRCIO', 'CONHECER MOTOS']
+        && d.tipo in ['CONSTATANDO', 'FINANCIAMENTO', 'CONSÓRCIO', 'CONHECER MOTOS']
         && texto(d.modelo, 80)
         && texto(d.observacao, 500)
         && d.origem in ['trafego-pago', 'formulario']

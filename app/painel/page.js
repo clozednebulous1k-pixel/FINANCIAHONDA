@@ -20,6 +20,7 @@ const VAZIO = {
 function tipoCurto(tipo) {
   if (tipo === "CONSÓRCIO") return "Consórcio";
   if (tipo === "CONHECER MOTOS") return "Motos";
+  if (tipo === "CONSTATANDO") return "Constatando";
   return "Financ.";
 }
 
@@ -31,7 +32,7 @@ function formDoLead(lead) {
   return {
     nome: lead.nome || "",
     whatsapp: lead.whatsapp || "",
-    tipo: lead.tipo || "FINANCIAMENTO",
+    tipo: lead.tipo || "CONSTATANDO",
     modelo: lead.modelo || "",
     observacao: lead.observacao || "",
     cnh: lead.cnh || "Sim",
