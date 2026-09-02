@@ -145,11 +145,8 @@ export default function PainelPage() {
 
   useEffect(() => {
     if (!user || !pronto) return undefined;
-    importarLeadsCnh().catch((error) => {
-      const codigo = error?.code || "";
-      if (codigo === "permission-denied") {
-        setErro("O Firebase recusou salvar. Cole as regras novas, clique em Publicar e atualize a página.");
-      }
+    importarLeadsCnh().catch(() => {
+      setErro("A lista aparece e some se as regras do Firebase estiverem desatualizadas. Publique o firestore.rules e atualize a página.");
     });
     return undefined;
   }, [user, pronto]);
