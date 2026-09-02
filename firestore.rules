@@ -1,46 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function vendedor() {
-      return request.auth != null
+    match /leads/{leadId} {
+      allow read, create, update: if request.auth != null
         && request.auth.token.email is string
         && request.auth.token.email.lower() == 'matheus.honda@gmail.com';
-    }
-
-    function texto(valor, max) {
-      return valor is string && valor.size() <= max;
-    }
-
-    function statusOk(valor) {
-      return valor in [
-        'novo', 'chamou', 'aguardando_resposta', 'nao_atendeu',
-        'em_atendimento', 'visita', 'ganho', 'perdido'
-      ];
-    }
-
-    function camposOk(d) {
-      return d.keys().hasOnly([
-          'nome', 'whatsapp', 'tipo', 'modelo', 'observacao',
-          'origem', 'status', 'respostas', 'createdAt', 'cnh'
-        ])
-        && texto(d.nome, 120) && d.nome.size() > 0
-        && texto(d.whatsapp, 20) && d.whatsapp.size() >= 10
-        && d.tipo in ['FINANCIAMENTO', 'CONSÓRCIO', 'CONHECER MOTOS']
-        && texto(d.modelo, 80)
-        && texto(d.observacao, 500)
-        && d.origem in ['trafego-pago', 'formulario']
-        && statusOk(d.status)
-        && (!d.keys().hasAny(['cnh']) || texto(d.cnh, 20))
-        && d.respostas is map
-        && d.createdAt is timestamp;
-    }
-
-    match /leads/{leadId} {
-      allow read: if vendedor();
-      allow create: if vendedor() && camposOk(request.resource.data) && request.resource.data.status == 'novo';
-      allow update: if vendedor()
-        && camposOk(request.resource.data)
-        && request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if false;
     }
   }
