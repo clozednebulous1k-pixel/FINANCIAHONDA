@@ -523,6 +523,57 @@ select {
   border-color: var(--ink);
 }
 
+.busca-painel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0 12px;
+  height: 48px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+.busca-painel:focus-within {
+  border-color: var(--red);
+}
+
+.busca-icon {
+  color: var(--red);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.busca-painel input {
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.busca-painel input:focus {
+  outline: none;
+}
+
+.busca-limpar {
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .table-card .lead {
   padding: 12px;
 }

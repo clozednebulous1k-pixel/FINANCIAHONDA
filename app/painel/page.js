@@ -41,6 +41,27 @@ function dataLead(valor) {
   }).format(new Date(ms));
 }
 
+function leadCombina(lead, busca) {
+  const termo = busca.trim().toLowerCase();
+  if (!termo) return true;
+  const fone = String(lead.whatsapp || "").replace(/\D/g, "");
+  const digits = termo.replace(/\D/g, "");
+  if (digits.length >= 4 && fone.includes(digits)) return true;
+  const texto = [
+    lead.nome,
+    lead.whatsapp,
+    lead.modelo,
+    lead.observacao,
+    lead.tipo,
+    lead.cnh,
+    statusLabel(lead.status),
+    tipoCurto(lead.tipo),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return texto.includes(termo);
+}
+
 function formDoLead(lead) {
   return {
     nome: lead.nome || "",
@@ -132,6 +153,7 @@ export default function PainelPage() {
   const [leads, setLeads] = useState([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [filtro, setFiltro] = useState("todos");
+  const [busca, setBusca] = useState("");
   const [mostrarCadastro, setMostrarCadastro] = useState(false);
   const [form, setForm] = useState(VAZIO);
   const [editandoId, setEditandoId] = useState("");
@@ -166,9 +188,9 @@ export default function PainelPage() {
   }, [user, pronto]);
 
   const visiveis = useMemo(() => {
-    if (filtro === "todos") return leads;
-    return leads.filter((lead) => (lead.status || "novo") === filtro);
-  }, [leads, filtro]);
+    const porStatus = filtro === "todos" ? leads : leads.filter((lead) => (lead.status || "novo") === filtro);
+    return porStatus.filter((lead) => leadCombina(lead, busca));
+  }, [leads, filtro, busca]);
 
   const contagem = useMemo(() => {
     const base = { todos: leads.length };
@@ -236,7 +258,7 @@ export default function PainelPage() {
       <header className="painel-top">
         <div>
           <p className="eyebrow">CRM Honda</p>
-          <h1>Leads <span className="count-pill">{leads.length}</span></h1>
+          <h1>Leads <span className="count-pill">{busca.trim() ? visiveis.length : leads.length}</span></h1>
         </div>
         <div className="painel-actions">
           <button type="button" onClick={() => setMostrarCadastro((v) => !v)}>
@@ -262,6 +284,23 @@ export default function PainelPage() {
         </section>
       )}
 
+      <label className="busca-painel">
+        <span className="busca-icon" aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar por nome, WhatsApp, moto ou observação..."
+          autoComplete="off"
+          enterKeyHint="search"
+        />
+        {busca ? (
+          <button type="button" className="busca-limpar" onClick={() => setBusca("")}>
+            Limpar
+          </button>
+        ) : null}
+      </label>
+
       <div className="status-tabs">
         <button type="button" className={filtro === "todos" ? "is-on" : ""} onClick={() => setFiltro("todos")}>
           Todos {contagem.todos}
@@ -282,7 +321,7 @@ export default function PainelPage() {
         {carregandoLista ? (
           <p className="lead">Carregando leads...</p>
         ) : visiveis.length === 0 ? (
-          <p className="lead">Nenhum lead neste filtro.</p>
+          <p className="lead">{busca.trim() ? "Nenhum lead nesta busca." : "Nenhum lead neste filtro."}</p>
         ) : (
           <div className="lead-table-wrap">
             <table className="lead-table">
