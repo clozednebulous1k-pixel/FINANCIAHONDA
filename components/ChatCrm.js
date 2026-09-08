@@ -14,7 +14,17 @@ function horaMsg(valor) {
   }).format(new Date(ms));
 }
 
-export default function ChatCrm({ lead, onClose }) {
+function iniciais(nome) {
+  const partes = String(nome || "?")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!partes.length) return "?";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return `${partes[0][0]}${partes[1][0]}`.toUpperCase();
+}
+
+export default function ChatCrm({ lead, embutido = false, onBack }) {
   const [mensagens, setMensagens] = useState([]);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -25,6 +35,7 @@ export default function ChatCrm({ lead, onClose }) {
   useEffect(() => {
     if (!lead?.id) return undefined;
     setMensagens([]);
+    setTexto("");
     setErro("");
     marcarLidas(lead.id).catch(() => {});
     return ouvirMensagens(
@@ -65,7 +76,7 @@ export default function ChatCrm({ lead, onClose }) {
           }
         }
       } catch {
-        // silencioso — Evolution pode estar offline
+        // Evolution offline
       } finally {
         if (ativo) setSincronizando(false);
       }
@@ -101,9 +112,7 @@ export default function ChatCrm({ lead, onClose }) {
       await salvarMensagem(lead.id, { texto: body, fromMe: true });
       if ((lead.status || "novo") === "novo") {
         await atualizarStatus(lead.id, "aguardando_resposta");
-      } else if (lead.status === "aguardando_resposta") {
-        // mantém
-      } else {
+      } else if (lead.status !== "aguardando_resposta") {
         await atualizarStatus(lead.id, "em_atendimento");
       }
       setTexto("");
@@ -114,42 +123,63 @@ export default function ChatCrm({ lead, onClose }) {
     }
   }
 
-  return (
-    <section className="chat-crm">
-      <header className="chat-crm-top">
-        <div>
-          <strong>{lead.nome}</strong>
-          <p className="muted">{lead.whatsapp}{sincronizando ? " · sync..." : ""}</p>
+  if (!lead) {
+    return (
+      <div className="wa-chat-empty">
+        <div className="wa-chat-empty-card">
+          <span className="wa-chat-empty-icon">💬</span>
+          <h2>Honda Conversas</h2>
+          <p>Selecione um cliente à esquerda para ver e responder as mensagens.</p>
         </div>
-        <button type="button" onClick={onClose}>Fechar</button>
+      </div>
+    );
+  }
+
+  return (
+    <section className={`wa-chat ${embutido ? "is-embed" : ""}`}>
+      <header className="wa-chat-top">
+        {onBack ? (
+          <button type="button" className="wa-back" onClick={onBack} aria-label="Voltar">
+            ←
+          </button>
+        ) : null}
+        <div className="wa-avatar" aria-hidden="true">{iniciais(lead.nome)}</div>
+        <div className="wa-chat-meta">
+          <strong>{lead.nome}</strong>
+          <span>
+            {lead.whatsapp}
+            {sincronizando ? " · sincronizando" : " · online"}
+          </span>
+        </div>
       </header>
 
-      <div className="chat-crm-msgs">
+      <div className="wa-chat-msgs">
         {mensagens.length === 0 ? (
-          <p className="muted chat-vazio">Nenhuma mensagem ainda. Envie a primeira abordagem.</p>
+          <p className="wa-chat-hint">Nenhuma mensagem ainda. Envie a primeira abordagem.</p>
         ) : (
           mensagens.map((msg) => (
-            <div key={msg.id} className={`chat-bolha ${msg.fromMe ? "is-out" : "is-in"}`}>
+            <div key={msg.id} className={`wa-bubble ${msg.fromMe ? "is-out" : "is-in"}`}>
               <p>{msg.texto}</p>
-              <span>{horaMsg(msg.createdAt)}</span>
+              <time>{horaMsg(msg.createdAt)}</time>
             </div>
           ))
         )}
         <div ref={fimRef} />
       </div>
 
-      {erro ? <p className="erro chat-erro">{erro}</p> : null}
+      {erro ? <p className="erro wa-chat-erro">{erro}</p> : null}
 
-      <form className="chat-crm-form" onSubmit={enviar}>
+      <form className="wa-chat-composer" onSubmit={enviar}>
         <input
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder="Digite a mensagem..."
+          placeholder="Mensagem"
           maxLength={4000}
           disabled={enviando}
+          autoComplete="off"
         />
-        <button type="submit" disabled={enviando || !texto.trim()}>
-          {enviando ? "..." : "Enviar"}
+        <button type="submit" disabled={enviando || !texto.trim()} aria-label="Enviar">
+          {enviando ? "…" : "➤"}
         </button>
       </form>
     </section>

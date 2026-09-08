@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
-import ChatCrm from "../../components/ChatCrm";
+import InboxConversas from "../../components/InboxConversas";
 import WhatsappStatus from "../../components/WhatsappStatus";
 import { delayAntiBanMs, montarAbordagem } from "../../lib/abordagens";
 import { atualizarLead, atualizarStatus, criarLead, excluirLead, importarLeadsCnh, marcarTodosConstatando, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
@@ -20,6 +20,12 @@ const VAZIO = {
   cnh: "Sim",
   status: "novo",
 };
+
+const MENUS = [
+  { id: "conversas", label: "Conversas" },
+  { id: "clientes", label: "Clientes" },
+  { id: "conexao", label: "Conexão" },
+];
 
 function tipoCurto(tipo) {
   if (tipo === "CONSÓRCIO") return "Consórcio";
@@ -154,6 +160,7 @@ function CamposLead({ form, setForm, incluirStatus }) {
 export default function PainelPage() {
   const router = useRouter();
   const { user, loading, logout, pronto } = useAuth();
+  const [menu, setMenu] = useState("conversas");
   const [leads, setLeads] = useState([]);
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [filtro, setFiltro] = useState("todos");
@@ -164,7 +171,6 @@ export default function PainelPage() {
   const [edicao, setEdicao] = useState(VAZIO);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
-  const [chatLead, setChatLead] = useState(null);
   const [waConectado, setWaConectado] = useState(false);
   const [disparando, setDisparando] = useState(false);
   const [progressoDisparo, setProgressoDisparo] = useState("");
@@ -208,6 +214,11 @@ export default function PainelPage() {
     return base;
   }, [leads]);
 
+  const naoLidas = useMemo(
+    () => leads.reduce((acc, lead) => acc + (Number(lead.naoLidas) || 0), 0),
+    [leads],
+  );
+
   async function salvar(event) {
     event.preventDefault();
     setErro("");
@@ -216,6 +227,7 @@ export default function PainelPage() {
       await criarLead({ ...form, origem: "formulario" });
       setForm(VAZIO);
       setFiltro("todos");
+      setMenu("clientes");
     } catch (error) {
       setErro("Não foi possível salvar o lead. Confira as regras do Firebase.");
     } finally {
@@ -230,7 +242,7 @@ export default function PainelPage() {
       await excluirLead(lead.id);
       if (editandoId === lead.id) setEditandoId("");
     } catch (error) {
-      setErro("Não foi possível apagar. Publique as regras novas no Firebase e atualize a página.");
+      setErro("Não foi possível apagar. Publique as regras novas do Firebase e atualize a página.");
     }
   }
 
@@ -306,245 +318,244 @@ export default function PainelPage() {
 
   if (loading || !user) {
     return (
-      <main className="painel">
-        <p className="lead">Carregando...</p>
+      <main className="crm-shell crm-loading">
+        <p>Carregando CRM…</p>
       </main>
     );
   }
 
   return (
-    <div className="painel">
-      <header className="painel-top">
-        <div>
-          <p className="eyebrow">CRM Honda</p>
-          <h1>Leads <span className="count-pill">{busca.trim() ? visiveis.length : leads.length}</span></h1>
+    <div className="crm-shell">
+      <aside className="crm-nav">
+        <div className="crm-brand">
+          <span className="crm-mark">H</span>
+          <div>
+            <strong>Honda CRM</strong>
+            <small>{waConectado ? "WhatsApp on" : "WhatsApp off"}</small>
+          </div>
         </div>
-        <div className="painel-actions">
-          <button
-            type="button"
-            className="btn-chamar"
-            onClick={chamarNovosWhatsapp}
-            disabled={disparando || !waConectado}
-            title={waConectado ? "Chamar leads novos no WhatsApp" : "Conecte o WhatsApp antes"}
-          >
-            {disparando ? "Chamando..." : "Chamar novos"}
-          </button>
-          <button type="button" onClick={() => setMostrarCadastro((v) => !v)}>
-            {mostrarCadastro ? "Fechar cadastro" : "+ Lead"}
-          </button>
+
+        <nav className="crm-menu">
+          {MENUS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={menu === item.id ? "is-on" : ""}
+              onClick={() => setMenu(item.id)}
+            >
+              <span>{item.label}</span>
+              {item.id === "conversas" && naoLidas > 0 ? (
+                <em className="crm-nav-badge">{naoLidas}</em>
+              ) : null}
+              {item.id === "clientes" ? <em className="crm-nav-count">{leads.length}</em> : null}
+            </button>
+          ))}
+        </nav>
+
+        <div className="crm-nav-foot">
           <Link href="/">Formulário</Link>
           <button type="button" onClick={logout}>Sair</button>
         </div>
-      </header>
+      </aside>
 
-      {!pronto && <p className="erro">Firebase não configurado.</p>}
-      {erro && <p className="erro">{erro}</p>}
-      {progressoDisparo ? <p className="disparo-box">{progressoDisparo}</p> : null}
+      <main className="crm-main">
+        {!pronto && <p className="erro">Firebase não configurado.</p>}
+        {erro && <p className="erro crm-erro-banner">{erro}</p>}
 
-      <WhatsappStatus onConnected={setWaConectado} />
-
-      {mostrarCadastro && (
-        <section className="painel-card">
-          <h2>Cadastrar lead</h2>
-          <form className="lead-form" onSubmit={salvar}>
-            <CamposLead form={form} setForm={setForm} />
-            <button className="btn-primary span-2" type="submit" disabled={salvando}>
-              {salvando ? "Salvando..." : "Salvar lead"}
-            </button>
-          </form>
-        </section>
-      )}
-
-      <label className="busca-painel">
-        <span className="busca-icon" aria-hidden="true">⌕</span>
-        <input
-          type="search"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar por nome, WhatsApp, moto ou observação..."
-          autoComplete="off"
-          enterKeyHint="search"
-        />
-        {busca ? (
-          <button type="button" className="busca-limpar" onClick={() => setBusca("")}>
-            Limpar
-          </button>
+        {menu === "conversas" ? (
+          <InboxConversas
+            leads={leads}
+            carregando={carregandoLista}
+            waConectado={waConectado}
+            onChamarNovos={chamarNovosWhatsapp}
+            disparando={disparando}
+            progresso={progressoDisparo}
+          />
         ) : null}
-      </label>
 
-      <div className="status-tabs">
-        <button type="button" className={filtro === "todos" ? "is-on" : ""} onClick={() => setFiltro("todos")}>
-          Todos {contagem.todos}
-        </button>
-        {STATUS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`st-${item.id} ${filtro === item.id ? "is-on" : ""}`}
-            onClick={() => setFiltro(item.id)}
-          >
-            {item.label} {contagem[item.id] || 0}
-          </button>
-        ))}
-      </div>
-
-      <section className="painel-card table-card">
-        {carregandoLista ? (
-          <p className="lead">Carregando leads...</p>
-        ) : visiveis.length === 0 ? (
-          <p className="lead">{busca.trim() ? "Nenhum lead nesta busca." : "Nenhum lead neste filtro."}</p>
-        ) : (
-          <div className="lead-table-wrap">
-            <table className="lead-table">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Adicionado</th>
-                  <th>WhatsApp</th>
-                  <th>CNH</th>
-                  <th>Tipo</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {visiveis.map((lead) => (
-                  <tr key={lead.id} className={editandoId === lead.id ? "is-edit" : ""}>
-                    {editandoId === lead.id ? (
-                      <>
-                        <td>
-                          <div className="cell-pair">
-                            <input
-                              className="cell-input"
-                              autoFocus
-                              maxLength={LIMITES.nome}
-                              value={edicao.nome}
-                              onChange={(e) => setEdicao({ ...edicao, nome: e.target.value })}
-                              onKeyDown={teclaEdicao}
-                              placeholder="Nome"
-                            />
-                            <input
-                              className="cell-input"
-                              maxLength={LIMITES.modelo}
-                              value={edicao.modelo}
-                              onChange={(e) => setEdicao({ ...edicao, modelo: e.target.value })}
-                              onKeyDown={teclaEdicao}
-                              placeholder="Moto"
-                            />
-                          </div>
-                        </td>
-                        <td className="nowrap muted">{dataLead(lead.createdAt)}</td>
-                        <td>
-                          <div className="cell-pair">
-                            <input
-                              className="cell-input"
-                              inputMode="tel"
-                              maxLength={LIMITES.whatsapp}
-                              value={edicao.whatsapp}
-                              onChange={(e) => setEdicao({ ...edicao, whatsapp: e.target.value })}
-                              onKeyDown={teclaEdicao}
-                              placeholder="WhatsApp"
-                            />
-                            <input
-                              className="cell-input"
-                              maxLength={LIMITES.observacao}
-                              value={edicao.observacao}
-                              onChange={(e) => setEdicao({ ...edicao, observacao: e.target.value })}
-                              onKeyDown={teclaEdicao}
-                              placeholder="Obs"
-                            />
-                          </div>
-                        </td>
-                        <td>
-                          <select
-                            className="cell-input"
-                            value={edicao.cnh}
-                            onChange={(e) => setEdicao({ ...edicao, cnh: e.target.value })}
-                          >
-                            {CNH_OPCOES.map((opcao) => (
-                              <option key={opcao}>{opcao}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            className="cell-input"
-                            value={edicao.tipo}
-                            onChange={(e) => setEdicao({ ...edicao, tipo: e.target.value })}
-                          >
-                            {TIPOS_LEAD.map((tipo) => (
-                              <option key={tipo}>{tipo}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <select
-                            className={`status-select st-${edicao.status || "novo"}`}
-                            value={edicao.status || "novo"}
-                            onChange={(e) => setEdicao({ ...edicao, status: e.target.value })}
-                          >
-                            {STATUS.map((item) => (
-                              <option key={item.id} value={item.id}>{item.label}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="row-actions">
-                          <button type="button" className="is-save" onClick={salvarEdicao}>Salvar</button>
-                          <button type="button" onClick={() => setEditandoId("")}>Cancelar</button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td>
-                          <strong>{lead.nome}</strong>
-                          {lead.naoLidas ? <span className="badge-msg">{lead.naoLidas}</span> : null}
-                          {lead.modelo ? <span className="muted"> {lead.modelo}</span> : null}
-                        </td>
-                        <td className="nowrap muted">{dataLead(lead.createdAt)}</td>
-                        <td className="nowrap">{lead.whatsapp}</td>
-                        <td>{lead.cnh || "—"}</td>
-                        <td>{tipoCurto(lead.tipo)}</td>
-                        <td>
-                          <select
-                            className={`status-select st-${lead.status || "novo"}`}
-                            value={lead.status || "novo"}
-                            onChange={(e) => atualizarStatus(lead.id, e.target.value)}
-                            aria-label={statusLabel(lead.status)}
-                          >
-                            {STATUS.map((item) => (
-                              <option key={item.id} value={item.id}>{item.label}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="row-actions">
-                          <button type="button" className="is-chat" onClick={() => setChatLead(lead)}>
-                            Chat
-                          </button>
-                          <a href={whatsappLead(lead.whatsapp)} target="_blank" rel="noopener noreferrer">WA</a>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditandoId(lead.id);
-                              setEdicao(formDoLead(lead));
-                            }}
-                          >
-                            Editar
-                          </button>
-                          <button type="button" className="is-del" onClick={() => apagar(lead)}>
-                            Apagar
-                          </button>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {menu === "conexao" ? (
+          <div className="crm-pane">
+            <header className="crm-pane-top">
+              <h1>Conexão WhatsApp</h1>
+              <p>Número Business 11 94753-9917</p>
+            </header>
+            <WhatsappStatus onConnected={setWaConectado} />
           </div>
-        )}
-      </section>
+        ) : null}
 
-      {chatLead ? <ChatCrm lead={chatLead} onClose={() => setChatLead(null)} /> : null}
+        {menu === "clientes" ? (
+          <div className="crm-pane">
+            <header className="crm-pane-top crm-pane-top-row">
+              <div>
+                <h1>Clientes</h1>
+                <p>{leads.length} leads no funil</p>
+              </div>
+              <div className="crm-pane-actions">
+                <button type="button" className="btn-chamar" onClick={chamarNovosWhatsapp} disabled={disparando || !waConectado}>
+                  {disparando ? "Chamando..." : "Chamar novos"}
+                </button>
+                <button type="button" onClick={() => setMostrarCadastro((v) => !v)}>
+                  {mostrarCadastro ? "Fechar" : "+ Lead"}
+                </button>
+              </div>
+            </header>
+
+            {progressoDisparo ? <p className="disparo-box">{progressoDisparo}</p> : null}
+
+            {mostrarCadastro && (
+              <section className="painel-card">
+                <h2>Cadastrar lead</h2>
+                <form className="lead-form" onSubmit={salvar}>
+                  <CamposLead form={form} setForm={setForm} />
+                  <button className="btn-primary span-2" type="submit" disabled={salvando}>
+                    {salvando ? "Salvando..." : "Salvar lead"}
+                  </button>
+                </form>
+              </section>
+            )}
+
+            <label className="busca-painel">
+              <span className="busca-icon" aria-hidden="true">⌕</span>
+              <input
+                type="search"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome, WhatsApp, moto ou observação..."
+                autoComplete="off"
+              />
+              {busca ? (
+                <button type="button" className="busca-limpar" onClick={() => setBusca("")}>
+                  Limpar
+                </button>
+              ) : null}
+            </label>
+
+            <div className="status-tabs">
+              <button type="button" className={filtro === "todos" ? "is-on" : ""} onClick={() => setFiltro("todos")}>
+                Todos {contagem.todos}
+              </button>
+              {STATUS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`st-${item.id} ${filtro === item.id ? "is-on" : ""}`}
+                  onClick={() => setFiltro(item.id)}
+                >
+                  {item.label} {contagem[item.id] || 0}
+                </button>
+              ))}
+            </div>
+
+            <section className="painel-card table-card">
+              {carregandoLista ? (
+                <p className="lead">Carregando leads...</p>
+              ) : visiveis.length === 0 ? (
+                <p className="lead">{busca.trim() ? "Nenhum lead nesta busca." : "Nenhum lead neste filtro."}</p>
+              ) : (
+                <div className="lead-table-wrap">
+                  <table className="lead-table">
+                    <thead>
+                      <tr>
+                        <th>Nome</th>
+                        <th>Adicionado</th>
+                        <th>WhatsApp</th>
+                        <th>CNH</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visiveis.map((lead) => (
+                        <tr key={lead.id} className={editandoId === lead.id ? "is-edit" : ""}>
+                          {editandoId === lead.id ? (
+                            <>
+                              <td>
+                                <div className="cell-pair">
+                                  <input className="cell-input" autoFocus maxLength={LIMITES.nome} value={edicao.nome} onChange={(e) => setEdicao({ ...edicao, nome: e.target.value })} onKeyDown={teclaEdicao} placeholder="Nome" />
+                                  <input className="cell-input" maxLength={LIMITES.modelo} value={edicao.modelo} onChange={(e) => setEdicao({ ...edicao, modelo: e.target.value })} onKeyDown={teclaEdicao} placeholder="Moto" />
+                                </div>
+                              </td>
+                              <td className="nowrap muted">{dataLead(lead.createdAt)}</td>
+                              <td>
+                                <div className="cell-pair">
+                                  <input className="cell-input" inputMode="tel" maxLength={LIMITES.whatsapp} value={edicao.whatsapp} onChange={(e) => setEdicao({ ...edicao, whatsapp: e.target.value })} onKeyDown={teclaEdicao} placeholder="WhatsApp" />
+                                  <input className="cell-input" maxLength={LIMITES.observacao} value={edicao.observacao} onChange={(e) => setEdicao({ ...edicao, observacao: e.target.value })} onKeyDown={teclaEdicao} placeholder="Obs" />
+                                </div>
+                              </td>
+                              <td>
+                                <select className="cell-input" value={edicao.cnh} onChange={(e) => setEdicao({ ...edicao, cnh: e.target.value })}>
+                                  {CNH_OPCOES.map((opcao) => <option key={opcao}>{opcao}</option>)}
+                                </select>
+                              </td>
+                              <td>
+                                <select className="cell-input" value={edicao.tipo} onChange={(e) => setEdicao({ ...edicao, tipo: e.target.value })}>
+                                  {TIPOS_LEAD.map((tipo) => <option key={tipo}>{tipo}</option>)}
+                                </select>
+                              </td>
+                              <td>
+                                <select className={`status-select st-${edicao.status || "novo"}`} value={edicao.status || "novo"} onChange={(e) => setEdicao({ ...edicao, status: e.target.value })}>
+                                  {STATUS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                                </select>
+                              </td>
+                              <td className="row-actions">
+                                <button type="button" className="is-save" onClick={salvarEdicao}>Salvar</button>
+                                <button type="button" onClick={() => setEditandoId("")}>Cancelar</button>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td>
+                                <strong>{lead.nome}</strong>
+                                {lead.naoLidas ? <span className="badge-msg">{lead.naoLidas}</span> : null}
+                                {lead.modelo ? <span className="muted"> {lead.modelo}</span> : null}
+                              </td>
+                              <td className="nowrap muted">{dataLead(lead.createdAt)}</td>
+                              <td className="nowrap">{lead.whatsapp}</td>
+                              <td>{lead.cnh || "—"}</td>
+                              <td>{tipoCurto(lead.tipo)}</td>
+                              <td>
+                                <select
+                                  className={`status-select st-${lead.status || "novo"}`}
+                                  value={lead.status || "novo"}
+                                  onChange={(e) => atualizarStatus(lead.id, e.target.value)}
+                                  aria-label={statusLabel(lead.status)}
+                                >
+                                  {STATUS.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.label}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="row-actions">
+                                <button type="button" className="is-chat" onClick={() => { setMenu("conversas"); }}>
+                                  Conversas
+                                </button>
+                                <a href={whatsappLead(lead.whatsapp)} target="_blank" rel="noopener noreferrer">WA</a>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditandoId(lead.id);
+                                    setEdicao(formDoLead(lead));
+                                  }}
+                                >
+                                  Editar
+                                </button>
+                                <button type="button" className="is-del" onClick={() => apagar(lead)}>
+                                  Apagar
+                                </button>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
+        ) : null}
+      </main>
     </div>
   );
 }
