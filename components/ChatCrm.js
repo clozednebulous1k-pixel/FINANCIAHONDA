@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MENSAGENS_PRONTAS } from "../lib/abordagens";
 import { atualizarStatus } from "../lib/leads";
 import { marcarLidas, ouvirMensagens, salvarMensagem } from "../lib/mensagens";
 
@@ -30,6 +31,7 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [sincronizando, setSincronizando] = useState(false);
+  const [mostrarProntas, setMostrarProntas] = useState(false);
   const fimRef = useRef(null);
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     setMensagens([]);
     setTexto("");
     setErro("");
+    setMostrarProntas(false);
     marcarLidas(lead.id).catch(() => {});
     return ouvirMensagens(
       lead.id,
@@ -90,6 +93,11 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead?.id, lead?.whatsapp]);
+
+  function usarPronta(item) {
+    setTexto(item.texto(lead?.nome || ""));
+    setMostrarProntas(false);
+  }
 
   async function enviar(event) {
     event.preventDefault();
@@ -176,14 +184,48 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
 
       {erro ? <p className="erro wa-chat-erro">{erro}</p> : null}
 
+      {mostrarProntas ? (
+        <div className="wa-prontas">
+          <div className="wa-prontas-head">
+            <strong>Mensagens prontas</strong>
+            <span>Matheus Ormond · Honda 0km</span>
+          </div>
+          <div className="wa-prontas-list">
+            {MENSAGENS_PRONTAS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="wa-pronta"
+                onClick={() => usarPronta(item)}
+                disabled={enviando}
+              >
+                <em>{item.label}</em>
+                <span>{item.texto(lead.nome).slice(0, 110)}…</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <form className="wa-chat-composer" onSubmit={enviar}>
+        <button
+          type="button"
+          className={`wa-btn-prontas ${mostrarProntas ? "is-on" : ""}`}
+          onClick={() => setMostrarProntas((v) => !v)}
+          disabled={enviando}
+          title="Mensagens prontas"
+          aria-label="Mensagens prontas"
+        >
+          ✦
+        </button>
         <div className="wa-composer-box">
-          <input
+          <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             placeholder="Mensagem"
             maxLength={4000}
             disabled={enviando}
+            rows={Math.min(6, Math.max(1, texto.split("\n").length))}
             autoComplete="off"
           />
         </div>

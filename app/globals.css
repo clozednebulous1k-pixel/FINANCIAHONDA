@@ -1820,10 +1820,93 @@ select {
   background: #202c33;
 }
 
+.wa-prontas {
+  border-top: 1px solid #2a3942;
+  background: #1a242b;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px 12px 12px;
+}
+
+.wa-prontas-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.wa-prontas-head strong {
+  color: #e9edef;
+  font-size: 13px;
+}
+
+.wa-prontas-head span {
+  color: #8696a0;
+  font-size: 11px;
+}
+
+.wa-prontas-list {
+  display: grid;
+  gap: 6px;
+}
+
+.wa-pronta {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid #2a3942;
+  border-radius: 10px;
+  background: #202c33;
+  color: #e9edef;
+  font: inherit;
+  cursor: pointer;
+}
+
+.wa-pronta:hover {
+  border-color: #00a884;
+  background: #243038;
+}
+
+.wa-pronta em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  color: #00a884;
+}
+
+.wa-pronta span {
+  color: #8696a0;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wa-btn-prontas {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: #2a3942;
+  color: #e9edef;
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wa-btn-prontas.is-on,
+.wa-btn-prontas:hover {
+  background: #00a884;
+  color: #111b21;
+}
+
 .wa-chat-composer {
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-end;
   min-height: 62px;
   padding: 8px 16px 10px;
   background: #202c33;
@@ -1836,18 +1919,30 @@ select {
   min-height: 42px;
   border-radius: 8px;
   background: #2a3942;
-  padding: 0 14px;
+  padding: 8px 14px;
 }
 
-.wa-composer-box input {
+.wa-composer-box input,
+.wa-composer-box textarea {
   width: 100%;
-  height: 42px;
   border: 0;
   background: transparent;
   color: #e9edef;
   font: inherit;
   font-size: 15px;
   outline: none;
+  resize: none;
+  line-height: 1.35;
+  max-height: 140px;
+}
+
+.wa-composer-box input {
+  height: 42px;
+}
+
+.wa-composer-box textarea {
+  min-height: 26px;
+  padding: 0;
 }
 
 .wa-chat-composer button {
