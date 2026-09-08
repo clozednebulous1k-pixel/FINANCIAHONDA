@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+.env
+.env.local
+.env*.local
+evolution/.env
+evolution/qr.html
+evolution/qr-response.json
+

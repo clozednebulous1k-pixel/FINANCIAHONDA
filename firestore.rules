@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function vendedor() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() == 'matheus.honda@gmail.com';
+    }
+
+    function texto(valor, max) {
+      return valor is string && valor.size() <= max;
+    }
+
+    function statusOk(valor) {
+      return valor in [
+        'novo', 'chamou', 'aguardando_resposta', 'nao_atendeu',
+        'em_atendimento', 'visita', 'ganho', 'perdido'
+      ];
+    }
+
+    function camposBaseOk(d) {
+      return d.keys().hasAll([
+          'nome', 'whatsapp', 'tipo', 'modelo', 'observacao',
+          'origem', 'status', 'respostas', 'createdAt'
+        ])
+        && texto(d.nome, 120) && d.nome.size() > 0
+        && texto(d.whatsapp, 20) && d.whatsapp.size() >= 10
+        && d.tipo in ['CONSTATANDO', 'FINANCIAMENTO', 'CONSÓRCIO', 'CONHECER MOTOS']
+        && texto(d.modelo, 80)
+        && texto(d.observacao, 500)
+        && d.origem in ['trafego-pago', 'formulario']
+        && statusOk(d.status)
+        && (!d.keys().hasAny(['cnh']) || texto(d.cnh, 20))
+        && d.respostas is map
+        && d.createdAt is timestamp
+        && (!d.keys().hasAny(['ultimaMensagem']) || texto(d.ultimaMensagem, 180))
+        && (!d.keys().hasAny(['ultimaMensagemEm']) || d.ultimaMensagemEm is timestamp)
+        && (!d.keys().hasAny(['naoLidas']) || (d.naoLidas is int && d.naoLidas >= 0 && d.naoLidas <= 999))
+        && (!d.keys().hasAny(['chamadoEm']) || d.chamadoEm is timestamp);
+    }
+
+    match /leads/{leadId} {
+      allow read: if vendedor();
+      allow create: if camposBaseOk(request.resource.data)
+        && request.resource.data.status == 'novo'
+        && (
+          vendedor()
+          || (
+            request.auth == null
+            && request.resource.data.origem == 'formulario'
+          )
+        );
+      allow update: if vendedor()
+        && camposBaseOk(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if vendedor();
+
+      match /mensagens/{msgId} {
+        allow read: if vendedor();
+        allow create: if vendedor()
+          && request.resource.data.keys().hasOnly(['texto', 'fromMe', 'messageId', 'createdAt'])
+          && texto(request.resource.data.texto, 4000)
+          && request.resource.data.texto.size() > 0
+          && request.resource.data.fromMe is bool
+          && texto(request.resource.data.messageId, 120)
+          && request.resource.data.createdAt is timestamp;
+        allow update, delete: if vendedor();
+      }
+    }
+  }
+}
