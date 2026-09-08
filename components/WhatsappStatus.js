@@ -14,11 +14,12 @@ export default function WhatsappStatus({ onConnected }) {
       const res = await fetch("/api/whatsapp/status", { cache: "no-store" });
       const data = await res.json();
       setInfo(data);
-      if (data.connected) onConnected?.(true);
+      onConnected?.(Boolean(data.connected));
       if (!res.ok) setErro(data.error || "Evolution offline");
     } catch {
       setErro("Não foi possível falar com a Evolution");
       setInfo(null);
+      onConnected?.(false);
     } finally {
       setCarregando(false);
     }

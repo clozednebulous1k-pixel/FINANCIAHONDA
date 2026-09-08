@@ -182,6 +182,28 @@ export default function PainelPage() {
   );
 
   useEffect(() => {
+    if (!user) return undefined;
+    let ativo = true;
+
+    async function checarWa() {
+      try {
+        const res = await fetch("/api/whatsapp/status", { cache: "no-store" });
+        const data = await res.json();
+        if (ativo) setWaConectado(Boolean(data.connected));
+      } catch {
+        if (ativo) setWaConectado(false);
+      }
+    }
+
+    checarWa();
+    const timer = setInterval(checarWa, 15000);
+    return () => {
+      ativo = false;
+      clearInterval(timer);
+    };
+  }, [user]);
+
+  useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
