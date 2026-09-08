@@ -1,0 +1,66 @@
+# Compose para VPS (convive com outros Docker).
+# Postgres/Redis só na rede interna; só a API sai pro host.
+#
+# Uso:
+#   cp .env.vps.example .env.vps
+#   # edite SERVER_URL e portas se o check-ports sugerir outras
+#   docker compose -f docker-compose.vps.yml --env-file .env.vps up -d
+
+services:
+  evolution-api:
+    container_name: honda_evolution_api
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    ports:
+      - "${EVOLUTION_HOST_PORT:-8080}:8080"
+    env_file:
+      - .env.vps
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_started
+    networks:
+      - honda_evo_net
+
+  evolution-postgres:
+    container_name: honda_evolution_postgres
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-evolution_honda_2026}
+      POSTGRES_DB: evolution
+    volumes:
+      - evolution_postgres:/var/lib/postgresql/data
+    # NÃO publica porta no host (não interfere / mais seguro)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evolution -d evolution"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - honda_evo_net
+
+  evolution-redis:
+    container_name: honda_evolution_redis
+    image: redis:7
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - evolution_redis:/data
+    # NÃO publica porta no host
+    networks:
+      - honda_evo_net
+
+volumes:
+  evolution_instances:
+  evolution_postgres:
+  evolution_redis:
+
+networks:
+  honda_evo_net:
+    name: honda_evo_net
+    driver: bridge
