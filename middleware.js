@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const JANELA_MS = 10 * 60 * 1000;
 const LIMITE = {
   login: 25,
-  api: 40,
+  api: 180,
 };
 
 const hits = new Map();
@@ -33,7 +33,12 @@ export function middleware(request) {
   const login = pathname === "/login" || pathname.startsWith("/api/login-guard");
   const api = pathname.startsWith("/api/");
 
-  if (pathname.startsWith("/api/whatsapp/webhook")) {
+  // webhook e polling do chat não entram no rate limit agressivo
+  if (
+    pathname.startsWith("/api/whatsapp/webhook") ||
+    pathname.startsWith("/api/whatsapp/messages") ||
+    pathname.startsWith("/api/whatsapp/status")
+  ) {
     return NextResponse.next();
   }
 
@@ -41,7 +46,14 @@ export function middleware(request) {
     const maximo = login ? LIMITE.login : LIMITE.api;
     const prefixo = login ? "login" : "api";
     if (estourou(`${prefixo}:${ip}`, maximo)) {
-      return new NextResponse("Muitas tentativas. Espere alguns minutos.", {
+      const msg = "Muitas tentativas. Espere alguns minutos.";
+      if (api) {
+        return NextResponse.json(
+          { error: msg },
+          { status: 429, headers: { "Retry-After": "600" } },
+        );
+      }
+      return new NextResponse(msg, {
         status: 429,
         headers: { "Retry-After": "600" },
       });

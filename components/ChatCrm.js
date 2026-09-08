@@ -115,7 +115,13 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
           texto: body,
         }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error(raw?.slice(0, 120) || "Falha ao enviar");
+      }
       if (!res.ok) throw new Error(data.error || "Falha ao enviar");
       await salvarMensagem(lead.id, { texto: body, fromMe: true });
       if ((lead.status || "novo") === "novo") {
