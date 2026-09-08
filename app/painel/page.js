@@ -8,7 +8,7 @@ import InboxConversas from "../../components/InboxConversas";
 import WhatsappStatus from "../../components/WhatsappStatus";
 import { delayAntiBanMs, montarAbordagem } from "../../lib/abordagens";
 import { atualizarLead, atualizarStatus, criarLead, excluirLead, importarLeadsCnh, marcarTodosConstatando, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
-import { salvarMensagem } from "../../lib/mensagens";
+import { salvarMensagem, limparDuplicadasEmLeads } from "../../lib/mensagens";
 import { CNH_OPCOES, LIMITES, TIPOS_LEAD } from "../../lib/security";
 
 const VAZIO = {
@@ -174,6 +174,7 @@ export default function PainelPage() {
   const [waConectado, setWaConectado] = useState(false);
   const [disparando, setDisparando] = useState(false);
   const [progressoDisparo, setProgressoDisparo] = useState("");
+  const [limpandoDup, setLimpandoDup] = useState(false);
   const pararDisparoRef = useRef(false);
   const disparoAtivoRef = useRef(false);
 
@@ -320,6 +321,25 @@ export default function PainelPage() {
     }
     setDisparando(false);
     setProgressoDisparo("Disparo parado.");
+  }
+
+  async function limparDuplicadasChat() {
+    if (limpandoDup) return;
+    if (!window.confirm("Apagar mensagens repetidas no painel (mantém só a 1ª de cada texto)?\n\nIsso NÃO apaga no WhatsApp do cliente.")) {
+      return;
+    }
+    setLimpandoDup(true);
+    setErro("");
+    setProgressoDisparo("Limpando duplicadas…");
+    try {
+      const n = await limparDuplicadasEmLeads(leads);
+      setProgressoDisparo(n ? `Removidas ${n} mensagens duplicadas do painel.` : "Nenhuma duplicada encontrada.");
+    } catch (error) {
+      setErro(error.message || "Falha ao limpar duplicadas");
+      setProgressoDisparo("");
+    } finally {
+      setLimpandoDup(false);
+    }
   }
 
   async function chamarNovosWhatsapp() {
@@ -485,6 +505,8 @@ export default function PainelPage() {
             waConectado={waConectado}
             onChamarNovos={chamarNovosWhatsapp}
             onPararChamada={pararChamadaNovos}
+            onLimparDuplicadas={limparDuplicadasChat}
+            limpandoDup={limpandoDup}
             disparando={disparando}
             progresso={progressoDisparo}
             qtdNovos={leadsNovos.length}

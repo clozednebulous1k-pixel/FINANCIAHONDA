@@ -1267,6 +1267,11 @@ select {
   color: #fff;
 }
 
+.wa-btn-broadcast.is-clean {
+  background: #2a3942;
+  color: #e9edef;
+}
+
 .wa-broadcast-bar {
   display: grid;
   gap: 6px;
@@ -1714,6 +1719,27 @@ select {
   min-height: 60px;
   padding: 8px 16px;
   background: #202c33;
+}
+
+.wa-btn-sync {
+  margin-left: auto;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #2a3942;
+  color: #e9edef;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.wa-btn-sync:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .wa-back {

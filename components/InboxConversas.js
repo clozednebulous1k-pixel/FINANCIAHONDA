@@ -49,6 +49,8 @@ export default function InboxConversas({
   waConectado,
   onChamarNovos,
   onPararChamada,
+  onLimparDuplicadas,
+  limpandoDup,
   disparando,
   progresso,
   qtdNovos = 0,
@@ -121,7 +123,15 @@ export default function InboxConversas({
               Chamar quem não foi chamado ({qtdNovos})
             </button>
           )}
-          <small>Intervalo anti-ban ≈ 45–85s entre cada um</small>
+          <button
+            type="button"
+            className="wa-btn-broadcast is-clean"
+            onClick={onLimparDuplicadas}
+            disabled={limpandoDup || disparando}
+          >
+            {limpandoDup ? "Limpando…" : "Apagar msgs duplicadas"}
+          </button>
+          <small>Intervalo anti-ban ≈ 45–85s · max 10 por vez</small>
         </div>
 
         {progresso ? <p className="wa-progress">{progresso}</p> : null}
