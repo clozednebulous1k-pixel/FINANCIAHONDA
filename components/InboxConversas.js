@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ChatCrm from "./ChatCrm";
 import SituacaoCliente from "./SituacaoCliente";
 import { STATUS } from "../lib/leads";
+import { apagarConversa } from "../lib/mensagens";
 
 function statusLabel(id) {
   return STATUS.find((item) => item.id === id)?.label || "Novo";
@@ -58,6 +59,8 @@ export default function InboxConversas({
   const [busca, setBusca] = useState("");
   const [selecionadoId, setSelecionadoId] = useState("");
   const [mobilePane, setMobilePane] = useState("lista");
+  const [menuCtx, setMenuCtx] = useState(null);
+  const [apagandoId, setApagandoId] = useState("");
 
   const conversas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -80,9 +83,65 @@ export default function InboxConversas({
 
   const selecionado = leads.find((l) => l.id === selecionadoId) || null;
 
+  useEffect(() => {
+    if (!menuCtx) return undefined;
+    function fechar() {
+      setMenuCtx(null);
+    }
+    function tecla(e) {
+      if (e.key === "Escape") fechar();
+    }
+    window.addEventListener("click", fechar);
+    window.addEventListener("scroll", fechar, true);
+    window.addEventListener("keydown", tecla);
+    return () => {
+      window.removeEventListener("click", fechar);
+      window.removeEventListener("scroll", fechar, true);
+      window.removeEventListener("keydown", tecla);
+    };
+  }, [menuCtx]);
+
   function abrir(lead) {
+    setMenuCtx(null);
     setSelecionadoId(lead.id);
     setMobilePane("chat");
+  }
+
+  function abrirMenu(event, lead) {
+    event.preventDefault();
+    event.stopPropagation();
+    const pad = 8;
+    const w = 220;
+    const h = 88;
+    let x = event.clientX;
+    let y = event.clientY;
+    if (x + w > window.innerWidth - pad) x = window.innerWidth - w - pad;
+    if (y + h > window.innerHeight - pad) y = window.innerHeight - h - pad;
+    setMenuCtx({ x, y, lead });
+  }
+
+  async function apagarConversaPainel(lead) {
+    setMenuCtx(null);
+    if (!lead?.id || apagandoId) return;
+    if (
+      !window.confirm(
+        `Apagar a conversa com ${lead.nome} no painel?\n\nRemove as mensagens do banco (Firebase).\nNão apaga no WhatsApp nem remove o lead.`,
+      )
+    ) {
+      return;
+    }
+    setApagandoId(lead.id);
+    try {
+      await apagarConversa(lead.id);
+      if (selecionadoId === lead.id) {
+        setSelecionadoId("");
+        setMobilePane("lista");
+      }
+    } catch (error) {
+      window.alert(error.message || "Não foi possível apagar a conversa");
+    } finally {
+      setApagandoId("");
+    }
   }
 
   return (
@@ -131,7 +190,7 @@ export default function InboxConversas({
           >
             {limpandoDup ? "Limpando…" : "Apagar msgs duplicadas"}
           </button>
-          <small>Intervalo anti-ban ≈ 45–85s · max 10 por vez</small>
+          <small>Botão direito na conversa → Apagar · anti-ban ≈ 45–85s · max 10</small>
         </div>
 
         {progresso ? <p className="wa-progress">{progresso}</p> : null}
@@ -157,8 +216,10 @@ export default function InboxConversas({
               <button
                 key={lead.id}
                 type="button"
-                className={`wa-thread ${selecionadoId === lead.id ? "is-active" : ""}`}
+                className={`wa-thread ${selecionadoId === lead.id ? "is-active" : ""} ${apagandoId === lead.id ? "is-busy" : ""}`}
                 onClick={() => abrir(lead)}
+                onContextMenu={(e) => abrirMenu(e, lead)}
+                title="Botão direito: apagar conversa do painel"
               >
                 <span className="wa-avatar">{iniciais(lead.nome)}</span>
                 <span className="wa-thread-body">
@@ -199,6 +260,27 @@ export default function InboxConversas({
         lead={selecionado}
         onBack={selecionado ? () => setMobilePane("chat") : undefined}
       />
+
+      {menuCtx ? (
+        <div
+          className="wa-ctx-menu"
+          style={{ left: menuCtx.x, top: menuCtx.y }}
+          role="menu"
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <p className="wa-ctx-label">{menuCtx.lead.nome}</p>
+          <button
+            type="button"
+            className="wa-ctx-item is-danger"
+            role="menuitem"
+            disabled={Boolean(apagandoId)}
+            onClick={() => apagarConversaPainel(menuCtx.lead)}
+          >
+            Apagar conversa do painel
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

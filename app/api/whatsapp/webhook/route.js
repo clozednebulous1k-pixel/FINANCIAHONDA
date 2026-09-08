@@ -67,6 +67,7 @@ export async function POST(request) {
         texto,
         fromMe: false,
         messageId: key.id || item.id || "",
+        messageTimestamp: item.messageTimestamp || item.timestamp || 0,
       });
       if (ok) salvas += 1;
       else ignoradas += 1;

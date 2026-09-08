@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { MENSAGENS_PRONTAS } from "../lib/abordagens";
 import { atualizarStatus } from "../lib/leads";
-import { marcarLidas, ouvirMensagens, salvarMensagem } from "../lib/mensagens";
+import {
+  apagarConversa,
+  marcarLidas,
+  msConversaDesde,
+  ouvirMensagens,
+  podarHistoricoAntesDaChamada,
+  salvarMensagem,
+} from "../lib/mensagens";
 
 function horaMsg(valor) {
   const ms = valor?.toMillis?.() || (typeof valor === "number" ? valor : 0);
@@ -31,9 +38,11 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
   const [sincronizando, setSincronizando] = useState(false);
+  const [apagando, setApagando] = useState(false);
   const [mostrarProntas, setMostrarProntas] = useState(false);
   const fimRef = useRef(null);
   const mensagensRef = useRef([]);
+  const podouRef = useRef("");
 
   useEffect(() => {
     mensagensRef.current = mensagens;
@@ -45,6 +54,7 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     setTexto("");
     setErro("");
     setMostrarProntas(false);
+    podouRef.current = "";
     marcarLidas(lead.id).catch(() => {});
     return ouvirMensagens(
       lead.id,
@@ -53,27 +63,64 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     );
   }, [lead?.id]);
 
+  // Remove do painel o histórico WA anterior à 1ª mensagem enviada por você
+  useEffect(() => {
+    if (!lead?.id || !mensagens.length) return;
+    if (podouRef.current === lead.id) return;
+    podouRef.current = lead.id;
+    podarHistoricoAntesDaChamada(lead.id).catch(() => {});
+  }, [lead?.id, mensagens.length]);
+
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensagens]);
 
-  /** Só busca respostas do cliente quando o usuário pede — nunca envia nada. */
+  async function limparChat() {
+    if (!lead?.id || apagando) return;
+    if (
+      !window.confirm(
+        `Apagar toda a conversa com ${lead.nome} no painel?\n\nIsso NÃO apaga no WhatsApp do cliente nem remove o lead.`,
+      )
+    ) {
+      return;
+    }
+    setApagando(true);
+    setErro("");
+    try {
+      await apagarConversa(lead.id);
+      setMensagens([]);
+    } catch (error) {
+      setErro(error.message || "Não foi possível apagar a conversa");
+    } finally {
+      setApagando(false);
+    }
+  }
+
+  /** Só busca respostas do cliente quando o usuário pede — nunca envia nada.
+   *  Só importa mensagens DEPOIS da 1ª chamada pelo painel. */
   async function puxarRespostas() {
     if (!lead?.whatsapp || sincronizando || enviando) return;
     setSincronizando(true);
     setErro("");
     try {
+      const atuais = mensagensRef.current;
+      const desde = msConversaDesde(lead, atuais);
+      if (!desde) {
+        setErro("Envie a 1ª mensagem pelo painel — só aí puxamos respostas (sem histórico antigo).");
+        return;
+      }
+
       const res = await fetch(`/api/whatsapp/messages?whatsapp=${encodeURIComponent(lead.whatsapp)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha ao buscar");
       const externas = Array.isArray(data.messages) ? data.messages : [];
-      const atuais = mensagensRef.current;
       const jaPorId = new Set(atuais.map((m) => m.messageId).filter(Boolean));
       const jaPorTexto = new Set(atuais.filter((m) => !m.fromMe).map((m) => m.texto));
 
       let novas = 0;
       for (const msg of externas.slice(-40)) {
         if (!msg.texto || msg.fromMe) continue;
+        if (msg.timestamp && msg.timestamp < desde) continue;
         if (msg.id && jaPorId.has(msg.id)) continue;
         if (jaPorTexto.has(msg.texto)) continue;
         await salvarMensagem(lead.id, {
@@ -167,15 +214,26 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
           <strong>{lead.nome}</strong>
           <span>{lead.whatsapp}</span>
         </div>
-        <button
-          type="button"
-          className="wa-btn-sync"
-          onClick={puxarRespostas}
-          disabled={sincronizando || enviando}
-          title="Buscar respostas do cliente"
-        >
-          {sincronizando ? "…" : "↻ Respostas"}
-        </button>
+        <div className="wa-chat-actions">
+          <button
+            type="button"
+            className="wa-btn-sync"
+            onClick={puxarRespostas}
+            disabled={sincronizando || enviando || apagando}
+            title="Buscar respostas (só após a 1ª mensagem pelo painel)"
+          >
+            {sincronizando ? "…" : "↻ Respostas"}
+          </button>
+          <button
+            type="button"
+            className="wa-btn-clear"
+            onClick={limparChat}
+            disabled={apagando || enviando || sincronizando}
+            title="Apagar conversa no painel"
+          >
+            {apagando ? "…" : "Apagar"}
+          </button>
+        </div>
       </header>
 
       <div className="wa-chat-msgs">
