@@ -127,9 +127,12 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     return (
       <div className="wa-chat-empty">
         <div className="wa-chat-empty-card">
-          <span className="wa-chat-empty-icon">💬</span>
-          <h2>Honda Conversas</h2>
-          <p>Selecione um cliente à esquerda para ver e responder as mensagens.</p>
+          <svg className="wa-empty-logo" viewBox="0 0 24 24" width="56" height="56" aria-hidden="true">
+            <path fill="#54656f" d="M19.005 3.175H4.674C3.642 3.175 3 3.789 3 4.821V21.02l3.544-3.544h12.461c1.033 0 2.064-1.06 2.064-2.093V4.821c-.001-1.032-1.033-1.646-2.064-1.646zm-4.892 8.99h-6.04v-1.67h6.04v1.67zm2.822-3.768h-8.862V6.727h8.862v1.67z"/>
+          </svg>
+          <h2>Honda WhatsApp</h2>
+          <p>Envie e receba mensagens sem precisar manter o celular conectado na tela.</p>
+          <p className="wa-empty-tip">Escolha uma conversa ao lado para começar.</p>
         </div>
       </div>
     );
@@ -140,27 +143,31 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
       <header className="wa-chat-top">
         {onBack ? (
           <button type="button" className="wa-back" onClick={onBack} aria-label="Voltar">
-            ←
+            ‹
           </button>
         ) : null}
-        <div className="wa-avatar" aria-hidden="true">{iniciais(lead.nome)}</div>
+        <div className="wa-avatar wa-avatar-sm" aria-hidden="true">{iniciais(lead.nome)}</div>
         <div className="wa-chat-meta">
           <strong>{lead.nome}</strong>
-          <span>
-            {lead.whatsapp}
-            {sincronizando ? " · sincronizando" : " · online"}
-          </span>
+          <span>{sincronizando ? "sincronizando…" : lead.whatsapp}</span>
         </div>
       </header>
 
       <div className="wa-chat-msgs">
         {mensagens.length === 0 ? (
-          <p className="wa-chat-hint">Nenhuma mensagem ainda. Envie a primeira abordagem.</p>
+          <div className="wa-chat-hint">
+            <p>As mensagens são criptografadas de ponta a ponta.</p>
+          </div>
         ) : (
           mensagens.map((msg) => (
             <div key={msg.id} className={`wa-bubble ${msg.fromMe ? "is-out" : "is-in"}`}>
-              <p>{msg.texto}</p>
-              <time>{horaMsg(msg.createdAt)}</time>
+              <div className="wa-bubble-inner">
+                <p>{msg.texto}</p>
+                <span className="wa-bubble-meta">
+                  <time>{horaMsg(msg.createdAt)}</time>
+                  {msg.fromMe ? <i className="wa-ticks" aria-hidden="true">✓✓</i> : null}
+                </span>
+              </div>
             </div>
           ))
         )}
@@ -170,16 +177,22 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
       {erro ? <p className="erro wa-chat-erro">{erro}</p> : null}
 
       <form className="wa-chat-composer" onSubmit={enviar}>
-        <input
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder="Mensagem"
-          maxLength={4000}
-          disabled={enviando}
-          autoComplete="off"
-        />
+        <div className="wa-composer-box">
+          <input
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Mensagem"
+            maxLength={4000}
+            disabled={enviando}
+            autoComplete="off"
+          />
+        </div>
         <button type="submit" disabled={enviando || !texto.trim()} aria-label="Enviar">
-          {enviando ? "…" : "➤"}
+          {enviando ? "…" : (
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path fill="currentColor" d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z" />
+            </svg>
+          )}
         </button>
       </form>
     </section>

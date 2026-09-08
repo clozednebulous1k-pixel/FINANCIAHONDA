@@ -67,18 +67,18 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
     <div className={`wa-inbox ${mobileChat && selecionado ? "show-chat" : ""}`}>
       <aside className="wa-inbox-list">
         <div className="wa-inbox-head">
-          <div>
-            <h2>Conversas</h2>
-            <p>{waConectado ? "WhatsApp conectado" : "WhatsApp offline"}</p>
+          <h2>Conversas</h2>
+          <div className="wa-inbox-tools">
+            <span className={`wa-dot ${waConectado ? "is-on" : ""}`} title={waConectado ? "Conectado" : "Offline"} />
+            <button
+              type="button"
+              className="wa-btn-broadcast"
+              onClick={onChamarNovos}
+              disabled={disparando || !waConectado}
+            >
+              {disparando ? "Enviando…" : "Chamar novos"}
+            </button>
           </div>
-          <button
-            type="button"
-            className="wa-btn-broadcast"
-            onClick={onChamarNovos}
-            disabled={disparando || !waConectado}
-          >
-            {disparando ? "Enviando…" : "Chamar novos"}
-          </button>
         </div>
 
         {progresso ? <p className="wa-progress">{progresso}</p> : null}
