@@ -922,12 +922,16 @@ select {
   --crm-bubble-out: #005c4b;
   --crm-bubble-in: #202c33;
   --crm-chat-bg: #0b141a;
+  width: 100%;
+  max-width: none;
   min-height: 100vh;
+  height: 100vh;
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 72px minmax(0, 1fr);
   background: #0a1014;
   color: var(--crm-text);
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  overflow: hidden;
 }
 
 .crm-loading {
@@ -1092,9 +1096,15 @@ select {
 
 .crm-main {
   min-width: 0;
+  width: 100%;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
   min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .crm-erro-banner {
@@ -1158,19 +1168,20 @@ select {
   background: #fff;
 }
 
-/* Inbox estilo WhatsApp Web */
+/* Inbox estilo WhatsApp Web — tela cheia */
 .wa-inbox {
   flex: 1;
-  min-height: 100vh;
-  height: 100vh;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
   display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: 320px minmax(0, 1fr) 300px;
   background: #222e35;
   overflow: hidden;
 }
 
 .wa-inbox-3 {
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: 320px minmax(0, 1fr) 300px;
 }
 
 .wa-inbox-list {
@@ -1178,10 +1189,12 @@ select {
   flex-direction: column;
   border-right: 1px solid #222d34;
   background: #111b21;
-  min-height: 100vh;
+  min-height: 0;
+  height: 100%;
   width: 100%;
   max-width: none;
   min-width: 0;
+  overflow: hidden;
 }
 
 .wa-inbox-head {
@@ -1402,9 +1415,14 @@ select {
 .wa-inbox-chat {
   position: relative;
   min-width: 0;
-  min-height: 100vh;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
   background: #0b141a;
   border-right: 1px solid #222d34;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .wa-open-situacao {
@@ -1412,8 +1430,9 @@ select {
 }
 
 .wa-situacao {
-  min-height: 100vh;
+  min-height: 0;
   height: 100%;
+  width: 100%;
   background: #111b21;
   border-left: 1px solid #222d34;
   display: flex;
@@ -1424,16 +1443,18 @@ select {
 
 .wa-situacao-top {
   min-height: 64px;
-  padding: 14px 16px;
+  padding: 12px 16px;
   background: #202c33;
   border-bottom: 1px solid #222d34;
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .wa-situacao-top > div {
   min-width: 0;
+  flex: 1;
 }
 
 .wa-situacao-top h3 {
@@ -1441,6 +1462,7 @@ select {
   font-size: 15px;
   font-weight: 600;
   color: #e9edef;
+  line-height: 1.2;
 }
 
 .wa-situacao-top p {
@@ -1450,6 +1472,7 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .wa-situacao-empty {
@@ -1609,9 +1632,16 @@ select {
 
 .wa-chat,
 .wa-chat-empty {
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.wa-chat.is-embed {
+  min-width: 0;
 }
 
 .wa-chat-empty {
@@ -1722,7 +1752,7 @@ select {
 }
 
 .wa-bubble {
-  max-width: min(65%, 560px);
+  max-width: min(72%, 640px);
   display: flex;
 }
 
@@ -1841,7 +1871,49 @@ select {
 @media (max-width: 1180px) {
   .wa-inbox,
   .wa-inbox-3 {
-    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(240px, 280px);
+    grid-template-columns: 280px minmax(0, 1fr) 260px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .wa-inbox,
+  .wa-inbox-3 {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+
+  .wa-situacao {
+    display: none;
+  }
+
+  .wa-open-situacao {
+    display: inline-flex;
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 5;
+    height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 999px;
+    background: #2a3942;
+    color: #e9edef;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .wa-inbox.show-situacao {
+    grid-template-columns: 1fr;
+  }
+
+  .wa-inbox.show-situacao .wa-inbox-list,
+  .wa-inbox.show-situacao .wa-inbox-chat {
+    display: none;
+  }
+
+  .wa-inbox.show-situacao .wa-situacao {
+    display: flex;
   }
 }
 
