@@ -43,7 +43,16 @@ function horaLista(valor) {
   }).format(d);
 }
 
-export default function InboxConversas({ leads, carregando, waConectado, onChamarNovos, disparando, progresso }) {
+export default function InboxConversas({
+  leads,
+  carregando,
+  waConectado,
+  onChamarNovos,
+  onPararChamada,
+  disparando,
+  progresso,
+  qtdNovos = 0,
+}) {
   const [busca, setBusca] = useState("");
   const [selecionadoId, setSelecionadoId] = useState("");
   const [mobilePane, setMobilePane] = useState("lista");
@@ -80,19 +89,39 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
         <div className="wa-inbox-head">
           <div className="wa-inbox-title">
             <h2>Leads</h2>
-            <p>{conversas.length} {conversas.length === 1 ? "lead" : "leads"}</p>
+            <p>
+              {conversas.length} {conversas.length === 1 ? "lead" : "leads"}
+              {qtdNovos > 0 ? ` · ${qtdNovos} sem chamar` : ""}
+            </p>
           </div>
           <div className="wa-inbox-tools">
             <span className={`wa-dot ${waConectado ? "is-on" : ""}`} title={waConectado ? "Conectado" : "Offline"} />
+          </div>
+        </div>
+
+        <div className="wa-broadcast-bar">
+          {disparando ? (
+            <button type="button" className="wa-btn-broadcast is-stop" onClick={onPararChamada}>
+              Parar chamadas
+            </button>
+          ) : (
             <button
               type="button"
               className="wa-btn-broadcast"
               onClick={onChamarNovos}
-              disabled={disparando || !waConectado}
+              disabled={!waConectado || qtdNovos === 0}
+              title={
+                !waConectado
+                  ? "Conecte o WhatsApp em Conexão"
+                  : qtdNovos === 0
+                    ? "Nenhum lead Novo"
+                    : "Chama só quem está com status Novo, com intervalo anti-ban"
+              }
             >
-              {disparando ? "Enviando…" : "Chamar novos"}
+              Chamar quem não foi chamado ({qtdNovos})
             </button>
-          </div>
+          )}
+          <small>Intervalo anti-ban ≈ 45–85s entre cada um</small>
         </div>
 
         {progresso ? <p className="wa-progress">{progresso}</p> : null}

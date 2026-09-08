@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
@@ -174,6 +174,12 @@ export default function PainelPage() {
   const [waConectado, setWaConectado] = useState(false);
   const [disparando, setDisparando] = useState(false);
   const [progressoDisparo, setProgressoDisparo] = useState("");
+  const pararDisparoRef = useRef(false);
+
+  const leadsNovos = useMemo(
+    () => leads.filter((lead) => (lead.status || "novo") === "novo"),
+    [leads],
+  );
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -269,23 +275,49 @@ export default function PainelPage() {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  function pararChamadaNovos() {
+    pararDisparoRef.current = true;
+    setProgressoDisparo("Parando após o envio atual…");
+  }
+
   async function chamarNovosWhatsapp() {
     const fila = leads.filter((lead) => (lead.status || "novo") === "novo");
     if (!fila.length) {
-      setErro("Não há leads com status Novo para chamar.");
+      setErro("Não há leads com status Novo (ainda não chamados).");
       return;
     }
-    if (!window.confirm(`Chamar ${fila.length} lead(s) no WhatsApp com intervalo anti-ban?`)) return;
+    if (!waConectado) {
+      setErro("WhatsApp desconectado. Vá em Conexão e confirme antes de chamar.");
+      return;
+    }
+
+    const minSeg = 45;
+    const maxSeg = 85;
+    if (
+      !window.confirm(
+        `Chamar ${fila.length} lead(s) ainda não contactados?\n\n` +
+          `Intervalo anti-ban: cerca de ${minSeg}–${maxSeg}s entre cada mensagem.\n` +
+          `Textos variados no estilo Matheus Ormond.`,
+      )
+    ) {
+      return;
+    }
 
     setDisparando(true);
     setErro("");
+    pararDisparoRef.current = false;
     let ok = 0;
     let falhas = 0;
 
     for (let i = 0; i < fila.length; i += 1) {
+      if (pararDisparoRef.current) {
+        setProgressoDisparo(`Parado: ${ok} enviados, ${falhas} falhas. Restaram ${fila.length - i}.`);
+        break;
+      }
+
       const lead = fila[i];
       const texto = montarAbordagem(lead.nome, i);
-      setProgressoDisparo(`Enviando ${i + 1}/${fila.length}: ${lead.nome}`);
+      setProgressoDisparo(`Chamando ${i + 1}/${fila.length}: ${lead.nome}`);
       try {
         const res = await fetch("/api/whatsapp/send", {
           method: "POST",
@@ -297,22 +329,44 @@ export default function PainelPage() {
             indice: i,
           }),
         });
-        const data = await res.json();
+        const raw = await res.text();
+        let data = {};
+        try {
+          data = raw ? JSON.parse(raw) : {};
+        } catch {
+          throw new Error(raw?.slice(0, 120) || "Falha no envio");
+        }
         if (!res.ok) throw new Error(data.error || "Falha no envio");
         await salvarMensagem(lead.id, { texto, fromMe: true });
         await atualizarStatus(lead.id, "aguardando_resposta");
         ok += 1;
-      } catch {
+      } catch (error) {
         falhas += 1;
+        setProgressoDisparo(`Falha em ${lead.nome}: ${error.message || "erro"}`);
       }
+
+      if (pararDisparoRef.current) {
+        setProgressoDisparo(`Parado: ${ok} enviados, ${falhas} falhas.`);
+        break;
+      }
+
       if (i < fila.length - 1) {
         const espera = delayAntiBanMs();
-        setProgressoDisparo(`Aguardando ${Math.round(espera / 1000)}s antes do próximo...`);
-        await sleep(espera);
+        const fim = Date.now() + espera;
+        while (Date.now() < fim) {
+          if (pararDisparoRef.current) break;
+          const restam = Math.max(0, Math.ceil((fim - Date.now()) / 1000));
+          setProgressoDisparo(
+            `Enviados ${ok}/${fila.length}. Anti-ban: próximo em ${restam}s…`,
+          );
+          await sleep(1000);
+        }
       }
     }
 
-    setProgressoDisparo(`Concluído: ${ok} enviados${falhas ? `, ${falhas} falhas` : ""}.`);
+    if (!pararDisparoRef.current) {
+      setProgressoDisparo(`Concluído: ${ok} enviados${falhas ? `, ${falhas} falhas` : ""}.`);
+    }
     setDisparando(false);
   }
 
@@ -373,8 +427,10 @@ export default function PainelPage() {
             carregando={carregandoLista}
             waConectado={waConectado}
             onChamarNovos={chamarNovosWhatsapp}
+            onPararChamada={pararChamadaNovos}
             disparando={disparando}
             progresso={progressoDisparo}
+            qtdNovos={leadsNovos.length}
           />
         ) : null}
 
@@ -397,8 +453,13 @@ export default function PainelPage() {
               </div>
               <div className="crm-pane-actions">
                 <button type="button" className="btn-chamar" onClick={chamarNovosWhatsapp} disabled={disparando || !waConectado}>
-                  {disparando ? "Chamando..." : "Chamar novos"}
+                  {disparando ? "Chamando..." : `Chamar novos (${leadsNovos.length})`}
                 </button>
+                {disparando ? (
+                  <button type="button" className="btn-chamar is-stop" onClick={pararChamadaNovos}>
+                    Parar
+                  </button>
+                ) : null}
                 <button type="button" onClick={() => setMostrarCadastro((v) => !v)}>
                   {mostrarCadastro ? "Fechar" : "+ Lead"}
                 </button>

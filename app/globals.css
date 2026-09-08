@@ -879,6 +879,11 @@ select {
   cursor: not-allowed;
 }
 
+.btn-chamar.is-stop {
+  background: var(--red) !important;
+  border-color: var(--red) !important;
+}
+
 .disparo-box {
   margin: 0 0 12px;
   padding: 10px 12px;
@@ -1239,22 +1244,41 @@ select {
 }
 
 .wa-btn-broadcast {
-  height: 32px;
+  height: 36px;
+  width: 100%;
   padding: 0 12px;
   border: 0;
   border-radius: 8px;
   background: #00a884;
   color: #111b21;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  white-space: nowrap;
 }
 
 .wa-btn-broadcast:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.wa-btn-broadcast.is-stop {
+  background: #c8102e;
+  color: #fff;
+}
+
+.wa-broadcast-bar {
+  display: grid;
+  gap: 6px;
+  padding: 8px 12px 4px;
+  border-bottom: 1px solid #222d34;
+  background: #182229;
+}
+
+.wa-broadcast-bar small {
+  color: #8696a0;
+  font-size: 11px;
+  text-align: center;
 }
 
 .wa-progress {
