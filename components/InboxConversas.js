@@ -19,17 +19,27 @@ function iniciais(nome) {
 }
 
 function previewLead(lead) {
-  return lead.ultimaMensagem || statusLabel(lead.status) || "Sem mensagens";
+  return lead.ultimaMensagem || statusLabel(lead.status) || "Toque para abrir a conversa";
 }
 
 function horaLista(valor) {
   const ms = valor?.toMillis?.() || 0;
   if (!ms) return "";
+  const agora = Date.now();
+  const d = new Date(ms);
+  const mesmoDia = new Date(agora).toDateString() === d.toDateString();
+  if (mesmoDia) {
+    return new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
+  }
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Sao_Paulo",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(ms));
+    day: "2-digit",
+    month: "2-digit",
+  }).format(d);
 }
 
 export default function InboxConversas({ leads, carregando, waConectado, onChamarNovos, disparando, progresso }) {
@@ -50,7 +60,7 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
     return lista.filter((lead) => {
       const fone = String(lead.whatsapp || "").replace(/\D/g, "");
       if (digits.length >= 4 && fone.includes(digits)) return true;
-      return `${lead.nome} ${lead.ultimaMensagem || ""} ${statusLabel(lead.status)}`
+      return `${lead.nome} ${lead.whatsapp} ${lead.ultimaMensagem || ""} ${statusLabel(lead.status)}`
         .toLowerCase()
         .includes(termo);
     });
@@ -67,7 +77,10 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
     <div className={`wa-inbox ${mobileChat && selecionado ? "show-chat" : ""}`}>
       <aside className="wa-inbox-list">
         <div className="wa-inbox-head">
-          <h2>Conversas</h2>
+          <div className="wa-inbox-title">
+            <h2>Conversas</h2>
+            <p>{conversas.length} {conversas.length === 1 ? "contato" : "contatos"}</p>
+          </div>
           <div className="wa-inbox-tools">
             <span className={`wa-dot ${waConectado ? "is-on" : ""}`} title={waConectado ? "Conectado" : "Offline"} />
             <button
@@ -89,16 +102,16 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
             type="search"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar conversa"
+            placeholder="Buscar nome ou número"
             autoComplete="off"
           />
         </label>
 
         <div className="wa-thread-scroll">
           {carregando ? (
-            <p className="wa-muted">Carregando…</p>
+            <p className="wa-muted">Carregando conversas…</p>
           ) : conversas.length === 0 ? (
-            <p className="wa-muted">Nenhuma conversa encontrada.</p>
+            <p className="wa-muted">Nenhuma conversa. Cadastre leads ou use Chamar novos.</p>
           ) : (
             conversas.map((lead) => (
               <button
@@ -117,6 +130,7 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
                     <em>{previewLead(lead)}</em>
                     {lead.naoLidas ? <span className="wa-unread">{lead.naoLidas}</span> : null}
                   </span>
+                  <span className="wa-thread-sub">{lead.whatsapp} · {statusLabel(lead.status)}</span>
                 </span>
               </button>
             ))

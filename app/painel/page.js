@@ -22,9 +22,9 @@ const VAZIO = {
 };
 
 const MENUS = [
-  { id: "conversas", label: "Conversas" },
-  { id: "clientes", label: "Clientes" },
-  { id: "conexao", label: "Conexão" },
+  { id: "conversas", label: "Conversas", icon: "💬" },
+  { id: "leads", label: "Leads", icon: "👥" },
+  { id: "conexao", label: "Conexão", icon: "📶" },
 ];
 
 function tipoCurto(tipo) {
@@ -227,7 +227,7 @@ export default function PainelPage() {
       await criarLead({ ...form, origem: "formulario" });
       setForm(VAZIO);
       setFiltro("todos");
-      setMenu("clientes");
+      setMenu("leads");
     } catch (error) {
       setErro("Não foi possível salvar o lead. Confira as regras do Firebase.");
     } finally {
@@ -343,11 +343,14 @@ export default function PainelPage() {
               className={menu === item.id ? "is-on" : ""}
               onClick={() => setMenu(item.id)}
             >
-              <span>{item.label}</span>
+              <span className="crm-menu-label">
+                <span className="crm-menu-ico" aria-hidden="true">{item.icon}</span>
+                {item.label}
+              </span>
               {item.id === "conversas" && naoLidas > 0 ? (
                 <em className="crm-nav-badge">{naoLidas}</em>
               ) : null}
-              {item.id === "clientes" ? <em className="crm-nav-count">{leads.length}</em> : null}
+              {item.id === "leads" ? <em className="crm-nav-count">{leads.length}</em> : null}
             </button>
           ))}
         </nav>
@@ -383,11 +386,11 @@ export default function PainelPage() {
           </div>
         ) : null}
 
-        {menu === "clientes" ? (
+        {menu === "leads" ? (
           <div className="crm-pane">
             <header className="crm-pane-top crm-pane-top-row">
               <div>
-                <h1>Clientes</h1>
+                <h1>Leads</h1>
                 <p>{leads.length} leads no funil</p>
               </div>
               <div className="crm-pane-actions">
