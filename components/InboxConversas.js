@@ -121,24 +121,35 @@ export default function InboxConversas({
   }
 
   async function apagarConversaPainel(lead) {
+    const alvo = lead;
     setMenuCtx(null);
-    if (!lead?.id || apagandoId) return;
+    if (!alvo?.id || apagandoId) return;
     if (
       !window.confirm(
-        `Apagar a conversa com ${lead.nome} no painel?\n\nRemove as mensagens do banco (Firebase).\nNão apaga no WhatsApp nem remove o lead.`,
+        `Apagar a conversa com ${alvo.nome} no painel?\n\nRemove as mensagens do banco (Firebase).\nNão apaga no WhatsApp nem remove o lead.`,
       )
     ) {
       return;
     }
-    setApagandoId(lead.id);
+    setApagandoId(alvo.id);
     try {
-      await apagarConversa(lead.id);
-      if (selecionadoId === lead.id) {
+      const n = await apagarConversa(alvo.id);
+      if (selecionadoId === alvo.id) {
         setSelecionadoId("");
         setMobilePane("lista");
       }
+      window.alert(
+        n > 0
+          ? `Conversa apagada (${n} mensagem${n === 1 ? "" : "ens"} removida${n === 1 ? "" : "s"} do painel).`
+          : "Conversa já estava vazia no painel.",
+      );
     } catch (error) {
-      window.alert(error.message || "Não foi possível apagar a conversa");
+      const msg = String(error?.code || error?.message || error || "");
+      window.alert(
+        msg.includes("permission") || msg.includes("Permission")
+          ? "Firebase bloqueou (permissão). Confirme que está logado com matheus.honda@gmail.com e publique as regras do firestore.rules."
+          : `Não foi possível apagar: ${error.message || msg}`,
+      );
     } finally {
       setApagandoId("");
     }
@@ -275,7 +286,11 @@ export default function InboxConversas({
             className="wa-ctx-item is-danger"
             role="menuitem"
             disabled={Boolean(apagandoId)}
-            onClick={() => apagarConversaPainel(menuCtx.lead)}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              apagarConversaPainel(menuCtx.lead);
+            }}
           >
             Apagar conversa do painel
           </button>

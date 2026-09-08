@@ -87,10 +87,16 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     setApagando(true);
     setErro("");
     try {
-      await apagarConversa(lead.id);
+      const n = await apagarConversa(lead.id);
       setMensagens([]);
+      setErro(n > 0 ? "" : "");
     } catch (error) {
-      setErro(error.message || "Não foi possível apagar a conversa");
+      const msg = String(error?.code || error?.message || "");
+      setErro(
+        msg.includes("permission") || msg.includes("Permission")
+          ? "Firebase bloqueou. Publique as regras do firestore.rules e confira o login."
+          : error.message || "Não foi possível apagar a conversa",
+      );
     } finally {
       setApagando(false);
     }

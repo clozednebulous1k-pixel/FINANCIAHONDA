@@ -36,7 +36,8 @@ service cloud.firestore {
         && (!d.keys().hasAny(['ultimaMensagem']) || texto(d.ultimaMensagem, 180))
         && (!d.keys().hasAny(['ultimaMensagemEm']) || d.ultimaMensagemEm is timestamp)
         && (!d.keys().hasAny(['naoLidas']) || (d.naoLidas is int && d.naoLidas >= 0 && d.naoLidas <= 999))
-        && (!d.keys().hasAny(['chamadoEm']) || d.chamadoEm is timestamp);
+        && (!d.keys().hasAny(['chamadoEm']) || d.chamadoEm is timestamp)
+        && (!d.keys().hasAny(['conversaDesde']) || d.conversaDesde is timestamp);
     }
 
     match /leads/{leadId} {
