@@ -33,6 +33,11 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
   const [sincronizando, setSincronizando] = useState(false);
   const [mostrarProntas, setMostrarProntas] = useState(false);
   const fimRef = useRef(null);
+  const mensagensRef = useRef([]);
+
+  useEffect(() => {
+    mensagensRef.current = mensagens;
+  }, [mensagens]);
 
   useEffect(() => {
     if (!lead?.id) return undefined;
@@ -52,52 +57,44 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensagens]);
 
-  useEffect(() => {
-    if (!lead?.whatsapp) return undefined;
-    let ativo = true;
+  /** Só busca respostas do cliente quando o usuário pede — nunca envia nada. */
+  async function puxarRespostas() {
+    if (!lead?.whatsapp || sincronizando || enviando) return;
+    setSincronizando(true);
+    setErro("");
+    try {
+      const res = await fetch(`/api/whatsapp/messages?whatsapp=${encodeURIComponent(lead.whatsapp)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Falha ao buscar");
+      const externas = Array.isArray(data.messages) ? data.messages : [];
+      const atuais = mensagensRef.current;
+      const jaPorId = new Set(atuais.map((m) => m.messageId).filter(Boolean));
+      const jaPorTexto = new Set(atuais.filter((m) => !m.fromMe).map((m) => m.texto));
 
-    async function syncEvolution() {
-      setSincronizando(true);
-      try {
-        const res = await fetch(`/api/whatsapp/messages?whatsapp=${encodeURIComponent(lead.whatsapp)}`);
-        const data = await res.json();
-        if (!ativo || !res.ok) return;
-        const externas = Array.isArray(data.messages) ? data.messages : [];
-        const jaPorId = new Set(mensagens.map((m) => m.messageId).filter(Boolean));
-        const jaPorTexto = new Set(mensagens.map((m) => `${m.fromMe ? 1 : 0}:${m.texto}`));
-
-        for (const msg of externas.slice(-40)) {
-          if (!msg.texto) continue;
-          if (msg.id && jaPorId.has(msg.id)) continue;
-          const chave = `${msg.fromMe ? 1 : 0}:${msg.texto}`;
-          if (jaPorTexto.has(chave)) continue;
-          // Grava respostas do cliente (e também as nossas se ainda não estiverem no Firebase)
-          await salvarMensagem(lead.id, {
-            texto: msg.texto,
-            fromMe: Boolean(msg.fromMe),
-            messageId: msg.id || "",
-          });
-          jaPorTexto.add(chave);
-          if (msg.id) jaPorId.add(msg.id);
-          if (!msg.fromMe && ["novo", "aguardando_resposta", "chamou"].includes(lead.status || "novo")) {
-            await atualizarStatus(lead.id, "em_atendimento");
-          }
+      let novas = 0;
+      for (const msg of externas.slice(-40)) {
+        if (!msg.texto || msg.fromMe) continue;
+        if (msg.id && jaPorId.has(msg.id)) continue;
+        if (jaPorTexto.has(msg.texto)) continue;
+        await salvarMensagem(lead.id, {
+          texto: msg.texto,
+          fromMe: false,
+          messageId: msg.id || "",
+        });
+        jaPorTexto.add(msg.texto);
+        if (msg.id) jaPorId.add(msg.id);
+        novas += 1;
+        if (["novo", "aguardando_resposta", "chamou"].includes(lead.status || "novo")) {
+          await atualizarStatus(lead.id, "em_atendimento");
         }
-      } catch {
-        // Evolution offline
-      } finally {
-        if (ativo) setSincronizando(false);
       }
+      if (!novas) setErro("");
+    } catch (error) {
+      setErro(error.message || "Não foi possível buscar respostas");
+    } finally {
+      setSincronizando(false);
     }
-
-    syncEvolution();
-    const timer = setInterval(syncEvolution, 6000);
-    return () => {
-      ativo = false;
-      clearInterval(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lead?.id, lead?.whatsapp]);
+  }
 
   function usarPronta(item) {
     setTexto(item.texto(lead?.nome || ""));
@@ -168,14 +165,23 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
         <div className="wa-avatar wa-avatar-sm" aria-hidden="true">{iniciais(lead.nome)}</div>
         <div className="wa-chat-meta">
           <strong>{lead.nome}</strong>
-          <span>{sincronizando ? "sincronizando…" : lead.whatsapp}</span>
+          <span>{lead.whatsapp}</span>
         </div>
+        <button
+          type="button"
+          className="wa-btn-sync"
+          onClick={puxarRespostas}
+          disabled={sincronizando || enviando}
+          title="Buscar respostas do cliente"
+        >
+          {sincronizando ? "…" : "↻ Respostas"}
+        </button>
       </header>
 
       <div className="wa-chat-msgs">
         {mensagens.length === 0 ? (
           <div className="wa-chat-hint">
-            <p>As mensagens são criptografadas de ponta a ponta.</p>
+            <p>Nada aqui ainda. Digite e envie, ou use ✦ mensagens prontas.</p>
           </div>
         ) : (
           mensagens.map((msg) => (
