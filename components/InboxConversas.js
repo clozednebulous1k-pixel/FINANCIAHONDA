@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import ChatCrm from "./ChatCrm";
+import SituacaoCliente from "./SituacaoCliente";
 import { STATUS } from "../lib/leads";
 
 function statusLabel(id) {
@@ -45,7 +46,7 @@ function horaLista(valor) {
 export default function InboxConversas({ leads, carregando, waConectado, onChamarNovos, disparando, progresso }) {
   const [busca, setBusca] = useState("");
   const [selecionadoId, setSelecionadoId] = useState("");
-  const [mobileChat, setMobileChat] = useState(false);
+  const [mobilePane, setMobilePane] = useState("lista");
 
   const conversas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -70,16 +71,16 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
 
   function abrir(lead) {
     setSelecionadoId(lead.id);
-    setMobileChat(true);
+    setMobilePane("chat");
   }
 
   return (
-    <div className={`wa-inbox ${mobileChat && selecionado ? "show-chat" : ""}`}>
+    <div className={`wa-inbox wa-inbox-3 ${mobilePane !== "lista" ? `show-${mobilePane}` : ""}`}>
       <aside className="wa-inbox-list">
         <div className="wa-inbox-head">
           <div className="wa-inbox-title">
-            <h2>Conversas</h2>
-            <p>{conversas.length} {conversas.length === 1 ? "contato" : "contatos"}</p>
+            <h2>Leads</h2>
+            <p>{conversas.length} {conversas.length === 1 ? "lead" : "leads"}</p>
           </div>
           <div className="wa-inbox-tools">
             <span className={`wa-dot ${waConectado ? "is-on" : ""}`} title={waConectado ? "Conectado" : "Offline"} />
@@ -102,16 +103,16 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
             type="search"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar nome ou número"
+            placeholder="Buscar lead"
             autoComplete="off"
           />
         </label>
 
         <div className="wa-thread-scroll">
           {carregando ? (
-            <p className="wa-muted">Carregando conversas…</p>
+            <p className="wa-muted">Carregando leads…</p>
           ) : conversas.length === 0 ? (
-            <p className="wa-muted">Nenhuma conversa. Cadastre leads ou use Chamar novos.</p>
+            <p className="wa-muted">Nenhum lead. Cadastre na aba Leads ou importe.</p>
           ) : (
             conversas.map((lead) => (
               <button
@@ -142,9 +143,23 @@ export default function InboxConversas({ leads, carregando, waConectado, onChama
         <ChatCrm
           lead={selecionado}
           embutido
-          onBack={selecionado ? () => setMobileChat(false) : undefined}
+          onBack={selecionado ? () => setMobilePane("lista") : undefined}
         />
+        {selecionado ? (
+          <button
+            type="button"
+            className="wa-open-situacao"
+            onClick={() => setMobilePane("situacao")}
+          >
+            Situação
+          </button>
+        ) : null}
       </div>
+
+      <SituacaoCliente
+        lead={selecionado}
+        onBack={selecionado ? () => setMobilePane("chat") : undefined}
+      />
     </div>
   );
 }

@@ -342,6 +342,8 @@ export default function PainelPage() {
               type="button"
               className={menu === item.id ? "is-on" : ""}
               onClick={() => setMenu(item.id)}
+              title={item.label}
+              aria-label={item.label}
             >
               <span className="crm-menu-label">
                 <span className="crm-menu-ico" aria-hidden="true">{item.icon}</span>
