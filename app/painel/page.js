@@ -175,11 +175,24 @@ export default function PainelPage() {
   const [disparando, setDisparando] = useState(false);
   const [progressoDisparo, setProgressoDisparo] = useState("");
   const pararDisparoRef = useRef(false);
+  const disparoAtivoRef = useRef(false);
 
   const leadsNovos = useMemo(
     () => leads.filter((lead) => (lead.status || "novo") === "novo"),
     [leads],
   );
+
+  useEffect(() => {
+    // Qualquer refresh/carregamento cancela disparo antigo
+    pararDisparoRef.current = true;
+    disparoAtivoRef.current = false;
+    try {
+      window.localStorage.setItem("honda-parar-disparo", "1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
 
   useEffect(() => {
     if (!user) return undefined;
@@ -299,12 +312,25 @@ export default function PainelPage() {
 
   function pararChamadaNovos() {
     pararDisparoRef.current = true;
-    setProgressoDisparo("Parando após o envio atual…");
+    disparoAtivoRef.current = false;
+    try {
+      window.localStorage.setItem("honda-parar-disparo", "1");
+    } catch {
+      // ignore
+    }
+    setDisparando(false);
+    setProgressoDisparo("Disparo parado.");
   }
 
   async function chamarNovosWhatsapp() {
-    const fila = leads.filter((lead) => (lead.status || "novo") === "novo");
-    if (!fila.length) {
+    if (disparoAtivoRef.current || disparando) {
+      setErro("Já existe um disparo em andamento. Clique em Parar primeiro.");
+      return;
+    }
+
+    const MAX_POR_VEZ = 10;
+    const todosNovos = leads.filter((lead) => (lead.status || "novo") === "novo");
+    if (!todosNovos.length) {
       setErro("Não há leads com status Novo (ainda não chamados).");
       return;
     }
@@ -313,26 +339,34 @@ export default function PainelPage() {
       return;
     }
 
+    const fila = todosNovos.slice(0, MAX_POR_VEZ);
     const minSeg = 45;
     const maxSeg = 85;
     if (
       !window.confirm(
-        `Chamar ${fila.length} lead(s) ainda não contactados?\n\n` +
-          `Intervalo anti-ban: cerca de ${minSeg}–${maxSeg}s entre cada mensagem.\n` +
-          `Textos variados no estilo Matheus Ormond.`,
+        `Chamar ${fila.length} lead(s) agora` +
+          (todosNovos.length > MAX_POR_VEZ ? ` (de ${todosNovos.length} novos; máx. ${MAX_POR_VEZ} por vez)` : "") +
+          `?\n\nIntervalo anti-ban: ~${minSeg}–${maxSeg}s entre cada um.\n` +
+          `Para cancelar depois: botão Parar ou F5 na página.`,
       )
     ) {
       return;
     }
 
+    disparoAtivoRef.current = true;
+    pararDisparoRef.current = false;
+    try {
+      window.localStorage.removeItem("honda-parar-disparo");
+    } catch {
+      // ignore
+    }
     setDisparando(true);
     setErro("");
-    pararDisparoRef.current = false;
     let ok = 0;
     let falhas = 0;
 
     for (let i = 0; i < fila.length; i += 1) {
-      if (pararDisparoRef.current) {
+      if (pararDisparoRef.current || window.localStorage.getItem("honda-parar-disparo") === "1") {
         setProgressoDisparo(`Parado: ${ok} enviados, ${falhas} falhas. Restaram ${fila.length - i}.`);
         break;
       }
@@ -367,7 +401,7 @@ export default function PainelPage() {
         setProgressoDisparo(`Falha em ${lead.nome}: ${error.message || "erro"}`);
       }
 
-      if (pararDisparoRef.current) {
+      if (pararDisparoRef.current || window.localStorage.getItem("honda-parar-disparo") === "1") {
         setProgressoDisparo(`Parado: ${ok} enviados, ${falhas} falhas.`);
         break;
       }
@@ -376,7 +410,7 @@ export default function PainelPage() {
         const espera = delayAntiBanMs();
         const fim = Date.now() + espera;
         while (Date.now() < fim) {
-          if (pararDisparoRef.current) break;
+          if (pararDisparoRef.current || window.localStorage.getItem("honda-parar-disparo") === "1") break;
           const restam = Math.max(0, Math.ceil((fim - Date.now()) / 1000));
           setProgressoDisparo(
             `Enviados ${ok}/${fila.length}. Anti-ban: próximo em ${restam}s…`,
@@ -386,9 +420,10 @@ export default function PainelPage() {
       }
     }
 
-    if (!pararDisparoRef.current) {
+    if (!pararDisparoRef.current && window.localStorage.getItem("honda-parar-disparo") !== "1") {
       setProgressoDisparo(`Concluído: ${ok} enviados${falhas ? `, ${falhas} falhas` : ""}.`);
     }
+    disparoAtivoRef.current = false;
     setDisparando(false);
   }
 
