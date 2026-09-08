@@ -63,19 +63,24 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
         const data = await res.json();
         if (!ativo || !res.ok) return;
         const externas = Array.isArray(data.messages) ? data.messages : [];
-        const jaTem = new Set(mensagens.map((m) => `${m.fromMe ? 1 : 0}:${m.texto}`));
-        for (const msg of externas.slice(-15)) {
+        const jaPorId = new Set(mensagens.map((m) => m.messageId).filter(Boolean));
+        const jaPorTexto = new Set(mensagens.map((m) => `${m.fromMe ? 1 : 0}:${m.texto}`));
+
+        for (const msg of externas.slice(-40)) {
+          if (!msg.texto) continue;
+          if (msg.id && jaPorId.has(msg.id)) continue;
           const chave = `${msg.fromMe ? 1 : 0}:${msg.texto}`;
-          if (!msg.texto || jaTem.has(chave)) continue;
-          if (!msg.fromMe) {
-            await salvarMensagem(lead.id, {
-              texto: msg.texto,
-              fromMe: false,
-              messageId: msg.id,
-            });
-            if (["novo", "aguardando_resposta", "chamou"].includes(lead.status || "novo")) {
-              await atualizarStatus(lead.id, "em_atendimento");
-            }
+          if (jaPorTexto.has(chave)) continue;
+          // Grava respostas do cliente (e também as nossas se ainda não estiverem no Firebase)
+          await salvarMensagem(lead.id, {
+            texto: msg.texto,
+            fromMe: Boolean(msg.fromMe),
+            messageId: msg.id || "",
+          });
+          jaPorTexto.add(chave);
+          if (msg.id) jaPorId.add(msg.id);
+          if (!msg.fromMe && ["novo", "aguardando_resposta", "chamou"].includes(lead.status || "novo")) {
+            await atualizarStatus(lead.id, "em_atendimento");
           }
         }
       } catch {
@@ -86,7 +91,7 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     }
 
     syncEvolution();
-    const timer = setInterval(syncEvolution, 12000);
+    const timer = setInterval(syncEvolution, 6000);
     return () => {
       ativo = false;
       clearInterval(timer);

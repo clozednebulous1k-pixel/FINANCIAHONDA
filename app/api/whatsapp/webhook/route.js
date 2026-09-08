@@ -1,13 +1,24 @@
 import { NextResponse } from "next/server";
-import { extrairTextoMensagem } from "../../../../lib/evolution";
+import {
+  extrairTextoMensagem,
+  numeroDoRemoteJid,
+} from "../../../../lib/evolution";
+import {
+  acharLeadPorWhatsapp,
+  adminPronto,
+  gravarMensagemInbound,
+} from "../../../../lib/firebaseAdmin";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Webhook da Evolution (local).
- * Por enquanto só confirma recebimento — o painel sincroniza as msgs via /api/whatsapp/messages.
- * Quando for pro VPS + Firebase Admin, aqui gravamos direto no Firestore.
- */
+function pegarMensagensDoWebhook(body) {
+  const data = body?.data || body || {};
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.messages)) return data.messages;
+  if (data.key || data.message) return [data];
+  return [];
+}
+
 export async function POST(request) {
   const secret = request.headers.get("x-webhook-secret");
   const esperado = process.env.EVOLUTION_WEBHOOK_SECRET;
@@ -22,18 +33,61 @@ export async function POST(request) {
     body = null;
   }
 
-  const event = body?.event || body?.type || "";
-  const data = body?.data || body;
-  const texto = extrairTextoMensagem(data?.message || data);
+  const event = String(body?.event || body?.type || "").toLowerCase();
+  const msgs = pegarMensagensDoWebhook(body);
+  let salvas = 0;
+  let ignoradas = 0;
+
+  if (adminPronto() && (event.includes("messages") || msgs.length)) {
+    for (const item of msgs) {
+      const key = item.key || {};
+      const fromMe = Boolean(key.fromMe);
+      if (fromMe) {
+        ignoradas += 1;
+        continue;
+      }
+      const texto = extrairTextoMensagem(item.message || item);
+      if (!texto) {
+        ignoradas += 1;
+        continue;
+      }
+      const remote =
+        key.remoteJid ||
+        item.remoteJid ||
+        item.sender ||
+        "";
+      const numero = numeroDoRemoteJid(remote);
+      const lead = await acharLeadPorWhatsapp(numero);
+      if (!lead) {
+        ignoradas += 1;
+        continue;
+      }
+      const ok = await gravarMensagemInbound({
+        leadId: lead.id,
+        texto,
+        fromMe: false,
+        messageId: key.id || item.id || "",
+      });
+      if (ok) salvas += 1;
+      else ignoradas += 1;
+    }
+  }
 
   return NextResponse.json({
     ok: true,
     received: true,
     event,
-    preview: String(texto || "").slice(0, 80),
+    admin: adminPronto(),
+    salvas,
+    ignoradas,
+    preview: String(extrairTextoMensagem(msgs[0]?.message || msgs[0] || "") || "").slice(0, 80),
   });
 }
 
 export function GET() {
-  return NextResponse.json({ ok: true, service: "whatsapp-webhook" });
+  return NextResponse.json({
+    ok: true,
+    service: "whatsapp-webhook",
+    admin: adminPronto(),
+  });
 }
