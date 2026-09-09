@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { enviarTexto, evolutionConfigurado } from "../../../../lib/evolution";
 import { telefoneE164 } from "../../../../lib/abordagens";
-import { textoSeguro } from "../../../../lib/security";
+import { textoSeguro, validarId } from "../../../../lib/security";
+import { leadJaRecebeuMensagemNossa } from "../../../../lib/firebaseAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,16 @@ export async function POST(request) {
   const texto = textoSeguro(body?.texto, 4000);
   if (!texto) {
     return NextResponse.json({ error: "Texto vazio — nada foi enviado" }, { status: 400 });
+  }
+
+  if (body?.disparo) {
+    const leadId = validarId(body?.leadId || "");
+    if (leadId && (await leadJaRecebeuMensagemNossa(leadId))) {
+      return NextResponse.json(
+        { ok: true, skipped: true, motivo: "já enviado" },
+        { status: 200 },
+      );
+    }
   }
 
   const agora = Date.now();

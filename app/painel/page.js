@@ -8,7 +8,7 @@ import InboxConversas from "../../components/InboxConversas";
 import WhatsappStatus from "../../components/WhatsappStatus";
 import { delayAntiBanMs, montarAbordagem } from "../../lib/abordagens";
 import { atualizarLead, atualizarStatus, criarLead, excluirLead, importarLeadsCnh, marcarTodosConstatando, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
-import { salvarMensagem, limparDuplicadasEmLeads } from "../../lib/mensagens";
+import { salvarMensagem, limparDuplicadasEmLeads, leadJaFoiChamado, jaEnviouMensagem } from "../../lib/mensagens";
 import { CNH_OPCOES, LIMITES, TIPOS_LEAD } from "../../lib/security";
 
 const VAZIO = {
@@ -179,7 +179,7 @@ export default function PainelPage() {
   const disparoAtivoRef = useRef(false);
 
   const leadsNovos = useMemo(
-    () => leads.filter((lead) => (lead.status || "novo") === "novo"),
+    () => leads.filter((lead) => !leadJaFoiChamado(lead)),
     [leads],
   );
 
@@ -349,9 +349,9 @@ export default function PainelPage() {
     }
 
     const MAX_POR_VEZ = 10;
-    const todosNovos = leads.filter((lead) => (lead.status || "novo") === "novo");
+    const todosNovos = leads.filter((lead) => !leadJaFoiChamado(lead));
     if (!todosNovos.length) {
-      setErro("Não há leads com status Novo (ainda não chamados).");
+      setErro("Não há leads novos sem mensagem enviada.");
       return;
     }
     if (!waConectado) {
@@ -384,6 +384,14 @@ export default function PainelPage() {
     setErro("");
     let ok = 0;
     let falhas = 0;
+    let pulados = 0;
+    const numerosEnviados = new Set();
+
+    function chaveFone(valor) {
+      let digits = String(valor || "").replace(/\D/g, "");
+      if (digits.startsWith("55") && digits.length >= 12) digits = digits.slice(2);
+      return digits;
+    }
 
     for (let i = 0; i < fila.length; i += 1) {
       if (pararDisparoRef.current || window.localStorage.getItem("honda-parar-disparo") === "1") {
@@ -392,9 +400,24 @@ export default function PainelPage() {
       }
 
       const lead = fila[i];
-      const texto = montarAbordagem(lead.nome, i);
-      setProgressoDisparo(`Chamando ${i + 1}/${fila.length}: ${lead.nome}`);
+      const fone = chaveFone(lead.whatsapp);
+      setProgressoDisparo(`Checando ${i + 1}/${fila.length}: ${lead.nome}`);
       try {
+        const mesmoNumeroJaFoi = Boolean(fone) && (
+          numerosEnviados.has(fone) ||
+          leads.some((outro) => outro.id !== lead.id && chaveFone(outro.whatsapp) === fone && leadJaFoiChamado(outro))
+        );
+        if (mesmoNumeroJaFoi || leadJaFoiChamado(lead) || (await jaEnviouMensagem(lead.id))) {
+          if ((lead.status || "novo") === "novo") {
+            await atualizarStatus(lead.id, "aguardando_resposta");
+          }
+          pulados += 1;
+          setProgressoDisparo(`Pulando ${lead.nome}: já foi chamado.`);
+          continue;
+        }
+
+        const texto = montarAbordagem(lead.nome, i);
+        setProgressoDisparo(`Chamando ${i + 1}/${fila.length}: ${lead.nome}`);
         const res = await fetch("/api/whatsapp/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -403,6 +426,8 @@ export default function PainelPage() {
             nome: lead.nome,
             texto,
             indice: i,
+            leadId: lead.id,
+            disparo: true,
           }),
         });
         const raw = await res.text();
@@ -413,8 +438,17 @@ export default function PainelPage() {
           throw new Error(raw?.slice(0, 120) || "Falha no envio");
         }
         if (!res.ok) throw new Error(data.error || "Falha no envio");
+        if (data.skipped) {
+          if ((lead.status || "novo") === "novo") {
+            await atualizarStatus(lead.id, "aguardando_resposta");
+          }
+          pulados += 1;
+          setProgressoDisparo(`Pulando ${lead.nome}: já foi chamado.`);
+          continue;
+        }
         await salvarMensagem(lead.id, { texto, fromMe: true });
         await atualizarStatus(lead.id, "aguardando_resposta");
+        if (fone) numerosEnviados.add(fone);
         ok += 1;
       } catch (error) {
         falhas += 1;
@@ -441,7 +475,11 @@ export default function PainelPage() {
     }
 
     if (!pararDisparoRef.current && window.localStorage.getItem("honda-parar-disparo") !== "1") {
-      setProgressoDisparo(`Concluído: ${ok} enviados${falhas ? `, ${falhas} falhas` : ""}.`);
+      const extra = [
+        falhas ? `${falhas} falhas` : "",
+        pulados ? `${pulados} já chamados (não reenviados)` : "",
+      ].filter(Boolean);
+      setProgressoDisparo(`Concluído: ${ok} enviados${extra.length ? `, ${extra.join(", ")}` : ""}.`);
     }
     disparoAtivoRef.current = false;
     setDisparando(false);
