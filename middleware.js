@@ -30,10 +30,12 @@ function estourou(chave, maximo) {
 export function middleware(request) {
   const { pathname } = request.nextUrl;
   const ip = ipDoPedido(request);
-  const login = pathname === "/login" || pathname.startsWith("/api/login-guard");
+  const login =
+    pathname === "/login" ||
+    pathname === "/login-afiliados" ||
+    pathname.startsWith("/api/login-guard");
   const api = pathname.startsWith("/api/");
 
-  // webhook e polling do chat não entram no rate limit agressivo
   if (
     pathname.startsWith("/api/whatsapp/webhook") ||
     pathname.startsWith("/api/whatsapp/messages") ||
@@ -61,12 +63,16 @@ export function middleware(request) {
   }
 
   const response = NextResponse.next();
-  if (pathname.startsWith("/login") || pathname.startsWith("/painel")) {
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/painel") ||
+    pathname.startsWith("/afiliados")
+  ) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
   return response;
 }
 
 export const config = {
-  matcher: ["/login", "/painel/:path*", "/api/:path*"],
+  matcher: ["/login", "/login-afiliados", "/painel/:path*", "/afiliados/:path*", "/api/:path*"],
 };

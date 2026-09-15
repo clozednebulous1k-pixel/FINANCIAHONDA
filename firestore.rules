@@ -7,6 +7,12 @@ service cloud.firestore {
         && request.auth.token.email.lower() == 'matheus.honda@gmail.com';
     }
 
+    function afiliado() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() == 'afiliados.crm@gmail.com';
+    }
+
     function texto(valor, max) {
       return valor is string && valor.size() <= max;
     }
@@ -67,6 +73,18 @@ service cloud.firestore {
           && request.resource.data.createdAt is timestamp;
         allow update, delete: if vendedor();
       }
+    }
+
+    match /afiliados_config/{id} {
+      allow read, write: if afiliado();
+    }
+
+    match /afiliados_grupos/{id} {
+      allow read, write: if afiliado();
+    }
+
+    match /afiliados_disparos/{id} {
+      allow read, write: if afiliado();
     }
   }
 }

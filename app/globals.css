@@ -2239,3 +2239,185 @@ select {
   }
 }
 
+.auth-switch {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.auth-switch a {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.auth-afiliados .eyebrow {
+  color: #0f766e;
+}
+
+.auth-afiliados .btn-primary,
+.crm-shell.is-afiliados .crm-mark,
+.crm-shell.is-afiliados .crm-menu button.is-on {
+  background: #0f766e;
+}
+
+.crm-shell.is-afiliados .crm-menu button.is-on {
+  color: #fff;
+}
+
+.aff-busca {
+  display: grid;
+  grid-template-columns: 1fr 180px auto auto;
+  gap: 10px;
+  align-items: center;
+  margin: 16px 0 20px;
+}
+
+.aff-busca input,
+.aff-busca select,
+.aff-config input,
+.aff-novo-grupo input,
+.aff-novo-grupo select,
+.aff-novo-grupo textarea,
+.aff-texto {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.aff-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.aff-aviso,
+.aff-vazio,
+.aff-resumo {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.aff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.aff-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.aff-card.is-on {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.2);
+}
+
+.aff-card-hit {
+  display: block;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.aff-card img,
+.aff-noimg {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  background: #eee;
+}
+
+.aff-card h3 {
+  margin: 8px 12px 4px;
+  font-size: 13px;
+  line-height: 1.35;
+  min-height: 36px;
+}
+
+.aff-card p {
+  margin: 0 12px 10px;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.aff-card s {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.aff-card a {
+  margin: auto 12px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.aff-loja,
+.aff-off {
+  position: absolute;
+  margin: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.aff-card {
+  position: relative;
+}
+
+.aff-loja.is-mercadolivre { background: #ffe600; color: #333; }
+.aff-loja.is-shopee { background: #ee4d2d; }
+.aff-off { right: 0; background: #c8102e; }
+
+.aff-novo-grupo,
+.aff-config {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.aff-grupos,
+.aff-escolhidos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.aff-grupos li,
+.aff-escolhidos li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.aff-grupos small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .aff-busca {
+    grid-template-columns: 1fr;
+  }
+}
+

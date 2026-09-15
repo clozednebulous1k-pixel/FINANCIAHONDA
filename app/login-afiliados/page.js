@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
-import { LIMITES, emailPermitido, rotaDoCrm, validarEmail } from "../../lib/security";
+import { EMAIL_AFILIADOS, LIMITES, emailPermitido, rotaDoCrm, validarEmail } from "../../lib/security";
 
-const CHAVE_EMAIL = "honda-login-email";
-const CHAVE_MANTER = "honda-login-manter";
+const CHAVE_EMAIL = "afiliados-login-email";
+const CHAVE_MANTER = "afiliados-login-manter";
 
-export default function LoginPage() {
+export default function LoginAfiliadosPage() {
   const router = useRouter();
   const { login, pronto, user, loading } = useAuth();
   const [email, setEmail] = useState("");
@@ -71,7 +71,7 @@ export default function LoginPage() {
       }
       await login(emailLimpo, senha, manter);
       router.replace(rotaDoCrm(emailLimpo));
-    } catch (error) {
+    } catch {
       const novasFalhas = falhas + 1;
       setFalhas(novasFalhas);
       setErro(novasFalhas >= 5
@@ -83,11 +83,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
-      <Link className="back" href="/">← Voltar ao formulário</Link>
-      <p className="eyebrow">Acesso do vendedor</p>
-      <h1>Entrar no painel</h1>
-      <p className="lead">Só a equipe da loja vê os leads do tráfego pago.</p>
+    <main className="auth-page auth-afiliados">
+      <p className="eyebrow">CRM Afiliados</p>
+      <h1>Disparo de links</h1>
+      <p className="lead">Busca ofertas no Mercado Livre e Shopee e dispara nos grupos com o seu link de afiliado.</p>
 
       {!pronto && (
         <p className="erro">Firebase ainda não está configurado. Coloque as chaves no arquivo .env.local.</p>
@@ -103,7 +102,7 @@ export default function LoginPage() {
             maxLength={LIMITES.email}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="vendedor@loja.com"
+            placeholder={EMAIL_AFILIADOS}
           />
         </label>
         <label>
@@ -132,7 +131,7 @@ export default function LoginPage() {
         </button>
       </form>
       <p className="auth-switch">
-        CRM de afiliados? <Link href="/login-afiliados">Entrar no disparo de links</Link>
+        CRM Honda? <Link href="/login">Entrar no painel de leads</Link>
       </p>
     </main>
   );

@@ -9,7 +9,7 @@ import WhatsappStatus from "../../components/WhatsappStatus";
 import { delayAntiBanMs, montarAbordagem } from "../../lib/abordagens";
 import { atualizarLead, atualizarStatus, criarLead, excluirLead, importarLeadsCnh, marcarTodosConstatando, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
 import { salvarMensagem, limparDuplicadasEmLeads, leadJaFoiChamado, jaEnviouMensagem } from "../../lib/mensagens";
-import { CNH_OPCOES, LIMITES, TIPOS_LEAD } from "../../lib/security";
+import { CNH_OPCOES, LIMITES, TIPOS_LEAD, crmDoEmail } from "../../lib/security";
 
 const VAZIO = {
   nome: "",
@@ -219,6 +219,7 @@ export default function PainelPage() {
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
+    if (!loading && user && crmDoEmail(user.email) === "afiliados") router.replace("/afiliados");
   }, [loading, user, router]);
 
   useEffect(() => {

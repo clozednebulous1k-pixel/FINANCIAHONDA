@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
+import { rotaDoCrm } from "../lib/security";
 
 export default function LoginButton() {
   const { user, loading } = useAuth();
@@ -10,7 +11,7 @@ export default function LoginButton() {
 
   if (user) {
     return (
-      <Link className="btn-login" href="/painel">
+      <Link className="btn-login" href={rotaDoCrm(user.email)}>
         Painel
       </Link>
     );
