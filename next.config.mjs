@@ -13,6 +13,11 @@ const nextConfig = {
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: envFirebase("STORAGE_BUCKET"),
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: envFirebase("MESSAGING_SENDER_ID"),
     NEXT_PUBLIC_FIREBASE_APP_ID: envFirebase("APP_ID"),
+    EMAIL_AFILIADOS:
+      process.env.EMAIL_AFILIADOS ||
+      process.env.NEXT_EMAIL_AFILIADOS ||
+      process.env.NEXT_PUBLIC_EMAIL_AFILIADOS ||
+      "afiliados.crm@gmail.com",
   },
   async headers() {
     return [

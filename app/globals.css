@@ -2415,8 +2415,24 @@ select {
   font-size: 12px;
 }
 
+.aff-colar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.aff-colar input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
 @media (max-width: 900px) {
-  .aff-busca {
+  .aff-busca,
+  .aff-colar {
     grid-template-columns: 1fr;
   }
 }

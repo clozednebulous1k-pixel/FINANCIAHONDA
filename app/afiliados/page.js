@@ -38,7 +38,7 @@ export default function AfiliadosPage() {
   const [waConectado, setWaConectado] = useState(false);
   const [erro, setErro] = useState("");
   const [grupos, setGrupos] = useState([]);
-  const [config, setConfig] = useState({ meliAffiliateId: "", shopeeAffiliateId: "" });
+  const [config, setConfig] = useState({ meliAffiliateId: "", meliAffiliateWord: "", shopeeAffiliateId: "" });
   const [termo, setTermo] = useState("oferta do dia");
   const [origem, setOrigem] = useState("todos");
   const [soPromo, setSoPromo] = useState(true);
@@ -51,6 +51,8 @@ export default function AfiliadosPage() {
   const [progresso, setProgresso] = useState("");
   const [syncGrupos, setSyncGrupos] = useState(false);
   const [novoGrupo, setNovoGrupo] = useState({ nome: "", tipo: "whatsapp", jid: "", pessoas: "" });
+  const [urlOferta, setUrlOferta] = useState("");
+  const [importando, setImportando] = useState(false);
   const pararRef = useRef(false);
 
   const escolhidos = useMemo(
@@ -70,6 +72,7 @@ export default function AfiliadosPage() {
     const b = ouvirConfigAfiliados((dados) => {
       setConfig({
         meliAffiliateId: dados?.meliAffiliateId || "",
+        meliAffiliateWord: dados?.meliAffiliateWord || "",
         shopeeAffiliateId: dados?.shopeeAffiliateId || "",
       });
     });
@@ -114,6 +117,7 @@ export default function AfiliadosPage() {
         origem,
         promo: soPromo ? "1" : "0",
         meli: config.meliAffiliateId || "",
+        meliWord: config.meliAffiliateWord || "",
         shopee: config.shopeeAffiliateId || "",
       });
       const res = await fetch(`/api/afiliados/produtos?${params}`);
@@ -131,6 +135,46 @@ export default function AfiliadosPage() {
 
   function toggleProduto(id) {
     setSelecionados((atual) => ({ ...atual, [id]: !atual[id] }));
+  }
+
+  async function colarLink(event) {
+    event.preventDefault();
+    if (!urlOferta.trim() || importando) return;
+    setImportando(true);
+    setErro("");
+    try {
+      const res = await fetch("/api/afiliados/produtos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: urlOferta,
+          meli: config.meliAffiliateId || "",
+          meliWord: config.meliAffiliateWord || "",
+          shopee: config.shopeeAffiliateId || "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.meli?.tool || data.meli?.word) {
+          setConfig((atual) => ({
+            ...atual,
+            meliAffiliateId: data.meli.tool || atual.meliAffiliateId,
+            meliAffiliateWord: data.meli.word || atual.meliAffiliateWord,
+          }));
+          setMenu("config");
+        }
+        throw new Error(data.error || "Não foi possível ler o link");
+      }
+      const item = data.produto;
+      setProdutos((lista) => [item, ...lista.filter((p) => p.id !== item.id)]);
+      setSelecionados((atual) => ({ ...atual, [item.id]: true }));
+      setUrlOferta("");
+      setMenu("ofertas");
+    } catch (error) {
+      setErro(error.message || "Falha ao importar o link");
+    } finally {
+      setImportando(false);
+    }
   }
 
   async function importarGruposWa() {
@@ -337,6 +381,17 @@ export default function AfiliadosPage() {
                 {buscando ? "Buscando…" : "Buscar"}
               </button>
             </form>
+            <form className="aff-colar" onSubmit={colarLink}>
+              <input
+                value={urlOferta}
+                onChange={(e) => setUrlOferta(e.target.value)}
+                placeholder="Ou cole o link da oferta do Mercado Livre / Shopee"
+                maxLength={500}
+              />
+              <button type="submit" className="btn-chamar" disabled={importando || !urlOferta.trim()}>
+                {importando ? "Lendo…" : "Adicionar com meu link"}
+              </button>
+            </form>
             {avisos.length ? <p className="aff-aviso">{avisos.join(" · ")}</p> : null}
             <div className="aff-grid">
               {produtos.map((item) => (
@@ -497,11 +552,31 @@ export default function AfiliadosPage() {
               }}
             >
               <label>
-                Mercado Livre (matt_tool)
+                Cole o link de afiliado do Mercado Livre
                 <input
                   value={config.meliAffiliateId}
-                  onChange={(e) => setConfig({ ...config, meliAffiliateId: e.target.value })}
-                  placeholder="ID do programa de afiliados"
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    try {
+                      const url = new URL(valor);
+                      setConfig({
+                        ...config,
+                        meliAffiliateId: url.searchParams.get("matt_tool") || valor,
+                        meliAffiliateWord: url.searchParams.get("matt_word") || config.meliAffiliateWord,
+                      });
+                    } catch {
+                      setConfig({ ...config, meliAffiliateId: valor });
+                    }
+                  }}
+                  placeholder="62300245 ou cole o link inteiro do ML"
+                />
+              </label>
+              <label>
+                Mercado Livre (matt_word)
+                <input
+                  value={config.meliAffiliateWord}
+                  onChange={(e) => setConfig({ ...config, meliAffiliateWord: e.target.value })}
+                  placeholder="bbhgadcfe38621"
                 />
               </label>
               <label>
@@ -515,7 +590,10 @@ export default function AfiliadosPage() {
               <button type="submit" className="btn-primary">Salvar IDs</button>
             </form>
             <p className="aff-aviso">
-              Para a busca oficial da Shopee, coloque também SHOPEE_APP_ID e SHOPEE_SECRET na Vercel.
+              <strong>Shopee (obrigatório para busca automática):</strong> entre em
+              {" "}<a href="https://affiliate.shopee.com.br" target="_blank" rel="noreferrer">affiliate.shopee.com.br</a>,
+              abra Open API / ferramentas de desenvolvedor, copie App ID e Secret e cole na Vercel:
+              SHOPEE_APP_ID e SHOPEE_SECRET. Depois faça redeploy. Enquanto isso, cole o link do produto na tela Ofertas.
             </p>
           </section>
         ) : null}
