@@ -10,7 +10,10 @@ service cloud.firestore {
     function afiliado() {
       return request.auth != null
         && request.auth.token.email is string
-        && request.auth.token.email.lower() == 'afiliados.crm@gmail.com';
+        && request.auth.token.email.lower() in [
+          'afiliados.crm@gmail.com',
+          'matheus.honda@gmail.com'
+        ];
     }
 
     function texto(valor, max) {

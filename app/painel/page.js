@@ -528,6 +528,7 @@ export default function PainelPage() {
         </nav>
 
         <div className="crm-nav-foot">
+          <Link href="/afiliados">CRM Afiliados</Link>
           <Link href="/">Formulário</Link>
           <button type="button" onClick={logout}>Sair</button>
         </div>

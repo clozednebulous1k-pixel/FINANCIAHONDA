@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
-import { EMAIL_AFILIADOS, LIMITES, emailPermitido, rotaDoCrm, validarEmail } from "../../lib/security";
+import { EMAIL_HONDA, EMAIL_AFILIADOS, LIMITES, emailPermitido, validarEmail } from "../../lib/security";
 
 const CHAVE_EMAIL = "afiliados-login-email";
 const CHAVE_MANTER = "afiliados-login-manter";
@@ -27,7 +27,7 @@ export default function LoginAfiliadosPage() {
   }, []);
 
   useEffect(() => {
-    if (!loading && user) router.replace(rotaDoCrm(user.email));
+    if (!loading && user && emailPermitido(user.email)) router.replace("/afiliados");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function LoginAfiliadosPage() {
         window.localStorage.setItem(CHAVE_MANTER, "0");
       }
       await login(emailLimpo, senha, manter);
-      router.replace(rotaDoCrm(emailLimpo));
+      router.replace("/afiliados");
     } catch {
       const novasFalhas = falhas + 1;
       setFalhas(novasFalhas);
@@ -86,7 +86,7 @@ export default function LoginAfiliadosPage() {
     <main className="auth-page auth-afiliados">
       <p className="eyebrow">CRM Afiliados</p>
       <h1>Disparo de links</h1>
-      <p className="lead">Busca ofertas no Mercado Livre e Shopee e dispara nos grupos com o seu link de afiliado.</p>
+      <p className="lead">Use a conta Honda para entrar agora. O e-mail {EMAIL_AFILIADOS} só funciona depois de criado no Firebase.</p>
 
       {!pronto && (
         <p className="erro">Firebase ainda não está configurado. Coloque as chaves no arquivo .env.local.</p>
@@ -102,7 +102,7 @@ export default function LoginAfiliadosPage() {
             maxLength={LIMITES.email}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder={EMAIL_AFILIADOS}
+            placeholder={EMAIL_HONDA}
           />
         </label>
         <label>

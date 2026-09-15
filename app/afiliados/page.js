@@ -13,7 +13,7 @@ import {
   registrarDisparoAfiliado,
   salvarConfigAfiliados,
 } from "../../lib/afiliados";
-import { crmDoEmail, loginDoCrm, validarWhatsapp } from "../../lib/security";
+import { emailPermitido, loginDoCrm, validarWhatsapp } from "../../lib/security";
 
 const MENUS = [
   { id: "ofertas", label: "Ofertas", icon: "🔎" },
@@ -63,7 +63,7 @@ export default function AfiliadosPage() {
 
   useEffect(() => {
     if (!loading && !user) router.replace(loginDoCrm("afiliados"));
-    if (!loading && user && crmDoEmail(user.email) !== "afiliados") router.replace("/painel");
+    if (!loading && user && !emailPermitido(user.email)) router.replace("/login");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -342,6 +342,7 @@ export default function AfiliadosPage() {
           ))}
         </nav>
         <div className="crm-nav-foot">
+          <a href="/painel">CRM Honda</a>
           <button type="button" onClick={() => logout()}>Sair</button>
         </div>
       </aside>
