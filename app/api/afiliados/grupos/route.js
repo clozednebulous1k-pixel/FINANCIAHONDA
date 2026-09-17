@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ error: "Evolution não configurada", grupos: [] }, { status: 503 });
   }
   try {
-    const raw = await listarGruposWhatsapp();
+    const raw = await listarGruposWhatsapp("afiliados");
     return NextResponse.json({ ok: true, grupos: normalizarGrupos(raw) });
   } catch (error) {
     return NextResponse.json(

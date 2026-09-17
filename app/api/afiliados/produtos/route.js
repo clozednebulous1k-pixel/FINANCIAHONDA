@@ -3,12 +3,14 @@ import { buscarProdutosAfiliados, importarProdutoPorUrl } from "../../../../lib/
 import { textoSeguro } from "../../../../lib/security";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const termo = textoSeguro(searchParams.get("q") || "", 80);
   const origem = textoSeguro(searchParams.get("origem") || "todos", 20);
   const soPromo = searchParams.get("promo") !== "0";
+  const robo = searchParams.get("robo") === "1";
   const meliTag = textoSeguro(searchParams.get("meli") || "", 80);
   const meliWord = textoSeguro(searchParams.get("meliWord") || "", 80);
   const shopeeTag = textoSeguro(searchParams.get("shopee") || "", 80);
@@ -16,8 +18,9 @@ export async function GET(request) {
   try {
     const data = await buscarProdutosAfiliados({
       termo,
-      origem: ["mercadolivre", "shopee", "todos"].includes(origem) ? origem : "todos",
+      origem: robo ? "mercadolivre" : ["mercadolivre", "shopee", "todos"].includes(origem) ? origem : "todos",
       soPromo,
+      robo,
       meliTag,
       meliWord,
       shopeeTag,

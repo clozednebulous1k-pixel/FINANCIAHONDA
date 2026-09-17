@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export default function WhatsappStatus({ onConnected }) {
+export default function WhatsappStatus({ onConnected, conta = "honda" }) {
   const [info, setInfo] = useState(null);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -11,7 +11,9 @@ export default function WhatsappStatus({ onConnected }) {
     setCarregando(true);
     setErro("");
     try {
-      const res = await fetch("/api/whatsapp/status", { cache: "no-store" });
+      const res = await fetch(`/api/whatsapp/status?conta=${encodeURIComponent(conta)}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       setInfo(data);
       onConnected?.(Boolean(data.connected));
@@ -30,18 +32,20 @@ export default function WhatsappStatus({ onConnected }) {
     const timer = setInterval(carregar, 8000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [conta]);
 
   const conectado = Boolean(info?.connected);
   const qr = info?.qrcode;
+  const titulo = info?.titulo || (conta === "afiliados" ? "WhatsApp Afiliados" : "WhatsApp Business");
+  const numero = info?.numeroFormatado || (conta === "afiliados" ? "11 95202-5568" : "11 94753-9917");
 
   return (
     <section className="painel-card wa-status-card">
       <div className="wa-status-row">
         <div>
-          <h2>WhatsApp Business</h2>
+          <h2>{titulo}</h2>
           <p className="muted">
-            Número: <strong>11 94753-9917</strong>
+            Número: <strong>{numero}</strong>
             {" · "}
             {carregando && !info
               ? "Checando..."
@@ -60,7 +64,11 @@ export default function WhatsappStatus({ onConnected }) {
 
       {!conectado && qr ? (
         <div className="wa-qr-box">
-          <p>No celular: WhatsApp Business → Aparelhos conectados → Conectar aparelho</p>
+          <p>
+            {conta === "afiliados"
+              ? "No celular 11 95202-5568: WhatsApp → Aparelhos conectados → Conectar aparelho"
+              : "No celular: WhatsApp Business → Aparelhos conectados → Conectar aparelho"}
+          </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={qr.startsWith("data:") ? qr : `data:image/png;base64,${qr}`}
@@ -72,7 +80,11 @@ export default function WhatsappStatus({ onConnected }) {
       ) : null}
 
       {conectado ? (
-        <p className="wa-ok">Pronto. Pode chamar os leads e usar o chat do CRM.</p>
+        <p className="wa-ok">
+          {conta === "afiliados"
+            ? "Pronto. Os disparos de afiliado saem deste número."
+            : "Pronto. Pode chamar os leads e usar o chat do CRM."}
+        </p>
       ) : null}
     </section>
   );

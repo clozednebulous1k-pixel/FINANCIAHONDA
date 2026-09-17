@@ -39,7 +39,8 @@ export function middleware(request) {
   if (
     pathname.startsWith("/api/whatsapp/webhook") ||
     pathname.startsWith("/api/whatsapp/messages") ||
-    pathname.startsWith("/api/whatsapp/status")
+    pathname.startsWith("/api/whatsapp/status") ||
+    pathname.startsWith("/api/afiliados/auto")
   ) {
     return NextResponse.next();
   }

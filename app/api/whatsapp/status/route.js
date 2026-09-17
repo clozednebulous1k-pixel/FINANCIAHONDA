@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import {
   configurarWebhook,
+  contaWhatsapp,
   evolutionConfigurado,
   garantirInstancia,
   healthCheck,
-  nomeInstancia,
   obterQr,
 } from "../../../../lib/evolution";
 
@@ -14,10 +14,14 @@ const WEBHOOK_URL =
   process.env.EVOLUTION_WEBHOOK_URL ||
   "https://financiamentodaminhahonda.vercel.app/api/whatsapp/webhook";
 
-export async function GET() {
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const conta = searchParams.get("conta") === "afiliados" ? "afiliados" : "honda";
+  const cfg = contaWhatsapp(conta);
+
   if (!evolutionConfigurado()) {
     return NextResponse.json(
-      { ok: false, error: "Evolution não configurada (.env.local)" },
+      { ok: false, error: "Evolution não configurada (.env.local)", conta },
       { status: 503 },
     );
   }
@@ -28,7 +32,11 @@ export async function GET() {
       {
         ok: false,
         online: false,
-        instance: nomeInstancia(),
+        conta,
+        instance: cfg.instance,
+        numero: cfg.numero,
+        numeroFormatado: cfg.formato,
+        titulo: cfg.titulo,
         error: "Evolution offline. Suba o Docker em /evolution",
       },
       { status: 503 },
@@ -36,12 +44,12 @@ export async function GET() {
   }
 
   try {
-    await garantirInstancia();
-    const qr = await obterQr();
+    await garantirInstancia(conta);
+    const qr = await obterQr(conta);
     let webhook = null;
-    if (qr.connected) {
+    if (qr.connected && conta === "honda") {
       try {
-        webhook = await configurarWebhook(WEBHOOK_URL);
+        webhook = await configurarWebhook(WEBHOOK_URL, conta);
       } catch (error) {
         webhook = { error: error.message || "Falha ao setar webhook" };
       }
@@ -49,17 +57,29 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       online: true,
-      instance: nomeInstancia(),
+      conta,
+      instance: cfg.instance,
       connected: Boolean(qr.connected),
       state: qr.state,
       qrcode: qr.qrcode,
-      numero: "5511947539917",
-      webhookUrl: WEBHOOK_URL,
+      numero: cfg.numero,
+      numeroFormatado: cfg.formato,
+      titulo: cfg.titulo,
+      webhookUrl: conta === "honda" ? WEBHOOK_URL : null,
       webhook,
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, online: true, error: error.message || "Falha ao obter status" },
+      {
+        ok: false,
+        online: true,
+        conta,
+        instance: cfg.instance,
+        numero: cfg.numero,
+        numeroFormatado: cfg.formato,
+        titulo: cfg.titulo,
+        error: error.message || "Falha ao obter status",
+      },
       { status: 500 },
     );
   }

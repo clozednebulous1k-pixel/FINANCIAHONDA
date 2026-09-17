@@ -14,11 +14,14 @@ import {
   salvarConfigAfiliados,
 } from "../../lib/afiliados";
 import { emailPermitido, loginDoCrm, validarWhatsapp } from "../../lib/security";
+import { montarTextoOferta } from "../../lib/textoAchadinho";
+import { ritmoAuto, RITMOS_AUTO } from "../../lib/ritmoAfiliados";
 
 const MENUS = [
-  { id: "ofertas", label: "Ofertas", icon: "🔎" },
+  { id: "ofertas", label: "Robô", icon: "🤖" },
   { id: "grupos", label: "Grupos", icon: "👥" },
-  { id: "disparo", label: "Disparo", icon: "🚀" },
+  { id: "disparo", label: "Postar", icon: "🚀" },
+  { id: "auto", label: "Auto", icon: "⏰" },
   { id: "conexao", label: "Conexão", icon: "📶" },
   { id: "config", label: "Links", icon: "🔗" },
 ];
@@ -38,7 +41,24 @@ export default function AfiliadosPage() {
   const [waConectado, setWaConectado] = useState(false);
   const [erro, setErro] = useState("");
   const [grupos, setGrupos] = useState([]);
-  const [config, setConfig] = useState({ meliAffiliateId: "", meliAffiliateWord: "", shopeeAffiliateId: "" });
+  const [config, setConfig] = useState({
+    meliAffiliateId: "",
+    meliAffiliateWord: "",
+    shopeeAffiliateId: "",
+    autoAtivo: false,
+    autoRitmo: "volume",
+    autoIntervaloMin: 8,
+    autoMaxDia: 100,
+    autoHoraIni: 8,
+    autoHoraFim: 22,
+    autoGancho: "🔥 ACHADINHO",
+    autoStatus: "",
+    autoMsgsDia: 0,
+    autoProdutosDia: 0,
+    autoDia: "",
+    autoLastTitulo: "",
+    autoLastGrupo: "",
+  });
   const [termo, setTermo] = useState("oferta do dia");
   const [origem, setOrigem] = useState("todos");
   const [soPromo, setSoPromo] = useState(true);
@@ -46,13 +66,15 @@ export default function AfiliadosPage() {
   const [avisos, setAvisos] = useState([]);
   const [buscando, setBuscando] = useState(false);
   const [selecionados, setSelecionados] = useState({});
-  const [textoExtra, setTextoExtra] = useState("Olha essa oferta 🔥");
+  const [textoExtra, setTextoExtra] = useState("🔥 ACHADINHO");
   const [disparando, setDisparando] = useState(false);
   const [progresso, setProgresso] = useState("");
   const [syncGrupos, setSyncGrupos] = useState(false);
   const [novoGrupo, setNovoGrupo] = useState({ nome: "", tipo: "whatsapp", jid: "", pessoas: "" });
   const [urlOferta, setUrlOferta] = useState("");
   const [importando, setImportando] = useState(false);
+  const [modoRobo, setModoRobo] = useState(true);
+  const [autoPing, setAutoPing] = useState("");
   const pararRef = useRef(false);
 
   const escolhidos = useMemo(
@@ -60,6 +82,10 @@ export default function AfiliadosPage() {
     [produtos, selecionados],
   );
   const gruposAtivos = useMemo(() => grupos.filter((g) => g.ativo !== false), [grupos]);
+  const preview = useMemo(
+    () => (escolhidos[0] ? montarTextoOferta(escolhidos[0], textoExtra) : textoExtra),
+    [escolhidos, textoExtra],
+  );
 
   useEffect(() => {
     if (!loading && !user) router.replace(loginDoCrm("afiliados"));
@@ -70,11 +96,25 @@ export default function AfiliadosPage() {
     if (!user) return undefined;
     const a = ouvirGruposAfiliados(setGrupos, () => setErro("Sem permissão nos grupos. Publique as regras novas do Firebase."));
     const b = ouvirConfigAfiliados((dados) => {
-      setConfig({
+      setConfig((atual) => ({
+        ...atual,
         meliAffiliateId: dados?.meliAffiliateId || "",
         meliAffiliateWord: dados?.meliAffiliateWord || "",
         shopeeAffiliateId: dados?.shopeeAffiliateId || "",
-      });
+        autoAtivo: Boolean(dados?.autoAtivo),
+        autoRitmo: dados?.autoRitmo || "volume",
+        autoIntervaloMin: Number(dados?.autoIntervaloMin) || 8,
+        autoMaxDia: Number(dados?.autoMaxDia) >= 20 ? Number(dados.autoMaxDia) : 100,
+        autoHoraIni: Number(dados?.autoHoraIni) || 8,
+        autoHoraFim: Number(dados?.autoHoraFim) || 22,
+        autoGancho: dados?.autoGancho || "🔥 ACHADINHO",
+        autoStatus: dados?.autoStatus || "",
+        autoMsgsDia: Number(dados?.autoMsgsDia) || 0,
+        autoProdutosDia: Number(dados?.autoProdutosDia) || 0,
+        autoDia: dados?.autoDia || "",
+        autoLastTitulo: dados?.autoLastTitulo || "",
+        autoLastGrupo: dados?.autoLastGrupo || "",
+      }));
     });
     return () => {
       a?.();
@@ -87,7 +127,7 @@ export default function AfiliadosPage() {
     let ativo = true;
     async function checarWa() {
       try {
-        const res = await fetch("/api/whatsapp/status", { cache: "no-store" });
+        const res = await fetch("/api/whatsapp/status?conta=afiliados", { cache: "no-store" });
         const data = await res.json();
         if (ativo) setWaConectado(Boolean(data.connected));
       } catch {
@@ -103,23 +143,47 @@ export default function AfiliadosPage() {
   }, [user]);
 
   useEffect(() => {
-    if (user && pronto) buscarOfertas("oferta do dia");
+    if (!user || !config.autoAtivo) return undefined;
+    async function ping() {
+      try {
+        const res = await fetch("/api/afiliados/auto", { method: "POST", cache: "no-store" });
+        const data = await res.json();
+        if (data.pulou === "sem-admin") {
+          setAutoPing("Falta FIREBASE_SERVICE_ACCOUNT_JSON na Vercel para o automático funcionar.");
+        } else if (data.pulou === "sem-evolution") {
+          setAutoPing("Evolution desligada. O automático não consegue postar.");
+        } else {
+          setAutoPing("");
+        }
+      } catch {
+        // o próximo ciclo tenta de novo
+      }
+    }
+    ping();
+    const timer = setInterval(ping, 3 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [user, config.autoAtivo]);
+
+  useEffect(() => {
+    if (user && pronto) rodarRobo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, pronto]);
 
-  async function buscarOfertas(q) {
+  async function buscarOfertas(q, { robo = false } = {}) {
     const query = String(q ?? termo).trim() || "oferta do dia";
     setBuscando(true);
     setErro("");
+    setModoRobo(robo);
     try {
       const params = new URLSearchParams({
         q: query,
-        origem,
-        promo: soPromo ? "1" : "0",
+        origem: robo ? "mercadolivre" : origem,
+        promo: soPromo || robo ? "1" : "0",
         meli: config.meliAffiliateId || "",
         meliWord: config.meliAffiliateWord || "",
         shopee: config.shopeeAffiliateId || "",
       });
+      if (robo) params.set("robo", "1");
       const res = await fetch(`/api/afiliados/produtos?${params}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha na busca");
@@ -131,6 +195,12 @@ export default function AfiliadosPage() {
     } finally {
       setBuscando(false);
     }
+  }
+
+  async function rodarRobo() {
+    setOrigem("mercadolivre");
+    setSoPromo(true);
+    await buscarOfertas("preço bom", { robo: true });
   }
 
   function toggleProduto(id) {
@@ -224,22 +294,26 @@ export default function AfiliadosPage() {
     }
   }
 
-  async function dispararTodos() {
+  async function dispararAchadinhos(lista) {
     if (disparando) return;
+    const ofertas = (lista || escolhidos).slice(0, 3);
     const fila = gruposAtivos;
     if (!fila.length) {
-      setErro("Cadastre ou ative pelo menos um grupo.");
+      setErro("Primeiro importe os grupos em Grupos. Você precisa estar neles no WhatsApp.");
+      setMenu("grupos");
       return;
     }
-    if (!escolhidos.length && !textoExtra.trim()) {
-      setErro("Selecione ofertas ou escreva um texto.");
+    if (!ofertas.length && !textoExtra.trim()) {
+      setErro("Escolha um achadinho ou escreva um texto.");
       return;
     }
     if (!waConectado) {
-      setErro("WhatsApp desconectado. Vá em Conexão e confirme.");
+      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 95202-5568.");
+      setMenu("conexao");
       return;
     }
-    if (!window.confirm(`Disparar para ${fila.length} grupo(s)? Intervalo de ~8–15s entre cada um.`)) {
+    const qtd = Math.max(ofertas.length, textoExtra.trim() ? 1 : 0);
+    if (!window.confirm(`Postar ${qtd} achadinho(s) em ${fila.length} grupo(s)? Um por vez, com intervalo de ~8–15s.`)) {
       return;
     }
 
@@ -248,41 +322,38 @@ export default function AfiliadosPage() {
     setErro("");
     let ok = 0;
     let falhas = 0;
+    const rodada = ofertas.length ? ofertas : [null];
 
-    for (let i = 0; i < fila.length; i += 1) {
-      if (pararRef.current) break;
-      const grupo = fila[i];
-      setProgresso(`Enviando ${i + 1}/${fila.length}: ${grupo.nome}`);
-      try {
-        const res = await fetch("/api/afiliados/disparar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            grupo,
-            produtos: escolhidos,
-            texto: textoExtra,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Falha no envio");
-        ok += Number(data.enviados || 0);
-        falhas += Number(data.falhas || 0);
-      } catch (error) {
-        falhas += 1;
-        setProgresso(`Falha em ${grupo.nome}: ${error.message || "erro"}`);
-      }
-
-      if (pararRef.current) break;
-      if (i < fila.length - 1) {
-        const espera = delayGrupoMs();
-        const fim = Date.now() + espera;
-        while (Date.now() < fim) {
-          if (pararRef.current) break;
-          const restam = Math.max(0, Math.ceil((fim - Date.now()) / 1000));
-          setProgresso(`Enviados até agora: ${ok}. Próximo grupo em ${restam}s…`);
-          await sleep(1000);
+    for (let p = 0; p < rodada.length; p += 1) {
+      const produto = rodada[p];
+      for (let i = 0; i < fila.length; i += 1) {
+        if (pararRef.current) break;
+        const grupo = fila[i];
+        const nomeOferta = produto?.titulo ? String(produto.titulo).slice(0, 40) : "texto";
+        setProgresso(`Postando ${p + 1}/${rodada.length} · grupo ${i + 1}/${fila.length}: ${grupo.nome} · ${nomeOferta}`);
+        try {
+          const res = await fetch("/api/afiliados/disparar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              grupo,
+              produtos: produto ? [produto] : [],
+              texto: textoExtra,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Falha no envio");
+          ok += Number(data.enviados || 0);
+          falhas += Number(data.falhas || 0);
+        } catch (error) {
+          falhas += 1;
+          setErro(error.message || "Falha no envio");
+        }
+        if (!pararRef.current && (p < rodada.length - 1 || i < fila.length - 1)) {
+          await sleep(delayGrupoMs());
         }
       }
+      if (pararRef.current) break;
     }
 
     try {
@@ -293,15 +364,34 @@ export default function AfiliadosPage() {
         falhas,
       });
     } catch {
-      // histórico é opcional
+      // histórico opcional
     }
-
-    setProgresso(
-      pararRef.current
-        ? `Parado: ${ok} envios, ${falhas} falhas.`
-        : `Concluído: ${ok} envios${falhas ? `, ${falhas} falhas` : ""}.`,
-    );
+    setProgresso(pararRef.current
+      ? `Parou. Enviados ${ok}, falhas ${falhas}.`
+      : `Pronto. Enviados ${ok}, falhas ${falhas}.`);
     setDisparando(false);
+  }
+
+  function postarCard(item) {
+    setSelecionados({ [item.id]: true });
+    setMenu("disparo");
+    dispararAchadinhos([item]);
+  }
+
+  async function salvarAuto(patch) {
+    const proximo = { ...config, ...patch };
+    setConfig(proximo);
+    try {
+      await salvarConfigAfiliados(proximo);
+      if (patch.autoAtivo) {
+        setProgresso("Robô automático ligado. Ele busca e posta sozinho, com pausa anti-ban.");
+        fetch("/api/afiliados/auto", { method: "POST", cache: "no-store" }).catch(() => {});
+      } else if (patch.autoAtivo === false) {
+        setProgresso("Robô automático desligado.");
+      }
+    } catch (error) {
+      setErro(error.message || "Não foi possível salvar o automático");
+    }
   }
 
   if (loading || !user) {
@@ -319,7 +409,10 @@ export default function AfiliadosPage() {
           <span className="crm-mark">A</span>
           <div>
             <strong>CRM Afiliados</strong>
-            <small>{waConectado ? "WhatsApp on" : "WhatsApp off"}</small>
+            <small>
+              {config.autoAtivo ? "Auto on · " : ""}
+              {waConectado ? "11 95202-5568 on" : "11 95202-5568 off"}
+            </small>
           </div>
         </div>
         <nav className="crm-menu">
@@ -353,8 +446,14 @@ export default function AfiliadosPage() {
         {menu === "ofertas" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
-              <h1>Buscador de ofertas</h1>
-              <p>Promoções no Mercado Livre e Shopee, já com o seu link de afiliado.</p>
+              <h1>Robô de ofertas</h1>
+              <p>Busca sozinho itens com preço bom no Mercado Livre e já cola o seu link de afiliado.</p>
+            </div>
+            <div className="aff-robo-bar">
+              <button type="button" className="btn-robo" onClick={rodarRobo} disabled={buscando}>
+                {buscando && modoRobo ? "Robô vasculhando…" : "Robô: preço bom no Mercado Livre"}
+              </button>
+              <span>Varre ofertas do dia, promoção e liquidação. Prioriza maior desconto e menor preço.</span>
             </div>
             <form
               className="aff-busca"
@@ -379,7 +478,7 @@ export default function AfiliadosPage() {
                 Só promoção
               </label>
               <button type="submit" className="btn-primary" disabled={buscando}>
-                {buscando ? "Buscando…" : "Buscar"}
+                {buscando && !modoRobo ? "Buscando…" : "Buscar"}
               </button>
             </form>
             <form className="aff-colar" onSubmit={colarLink}>
@@ -410,10 +509,20 @@ export default function AfiliadosPage() {
                     </p>
                   </button>
                   <a href={item.link} target="_blank" rel="noreferrer">Abrir link</a>
+                  <button
+                    type="button"
+                    className="btn-achadinho"
+                    disabled={disparando || !waConectado}
+                    onClick={() => postarCard(item)}
+                  >
+                    Postar nos grupos
+                  </button>
                 </article>
               ))}
             </div>
-            {!buscando && !produtos.length ? <p className="aff-vazio">Nenhuma oferta agora. Tente outro termo.</p> : null}
+            {!buscando && !produtos.length ? (
+              <p className="aff-vazio">Nenhuma oferta agora. Clique no robô amarelo ou cole o link do produto.</p>
+            ) : null}
           </section>
         ) : null}
 
@@ -421,13 +530,19 @@ export default function AfiliadosPage() {
           <section className="crm-pane">
             <div className="crm-pane-top-row">
               <div>
-                <h1>Grupos</h1>
-                <p>Importe grupos do WhatsApp ou crie listas de pessoas para receber os links.</p>
+                <h1>Grupos de achadinhos</h1>
+                <p>O celular 11 95202-5568 precisa estar nos grupos. Depois importe e deixe ativos.</p>
               </div>
               <button type="button" className="btn-chamar" onClick={importarGruposWa} disabled={syncGrupos || !waConectado}>
                 {syncGrupos ? "Importando…" : "Importar grupos do WhatsApp"}
               </button>
             </div>
+            <ol className="aff-passos">
+              <li>Entre nos grupos de achadinhos / promoções com o <strong>11 95202-5568</strong> (ou crie os seus).</li>
+              <li>Conecte o WhatsApp em <strong>Conexão</strong>.</li>
+              <li>Clique em <strong>Importar grupos do WhatsApp</strong> e deixe ativos só os que vão receber oferta.</li>
+              <li>No Robô, escolha 1 produto e clique em <strong>Postar nos grupos</strong>.</li>
+            </ol>
             <form className="aff-novo-grupo" onSubmit={salvarLista}>
               <input
                 required
@@ -490,23 +605,28 @@ export default function AfiliadosPage() {
         {menu === "disparo" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
-              <h1>Disparo nos grupos</h1>
-              <p>Envia os links selecionados para todos os grupos ativos.</p>
+              <h1>Postar nos grupos</h1>
+              <p>Igual os grupos de achadinhos: uma foto + de/por + seu link de afiliado, um produto por vez, em todos os grupos ativos.</p>
             </div>
             <p className="aff-resumo">
-              {escolhidos.length} oferta(s) · {gruposAtivos.length} grupo(s) ativo(s)
+              {escolhidos.length} achadinho(s) · {gruposAtivos.length} grupo(s) ativo(s)
             </p>
             <textarea
               className="aff-texto"
-              rows={3}
-              maxLength={800}
+              rows={2}
+              maxLength={120}
               value={textoExtra}
               onChange={(e) => setTextoExtra(e.target.value)}
-              placeholder="Texto que vai acima do link"
+              placeholder="🔥 ACHADINHO"
             />
+            {preview ? (
+              <pre className="aff-preview">{preview}</pre>
+            ) : (
+              <p className="aff-vazio">Selecione um produto no Robô para ver o preview.</p>
+            )}
             <div className="crm-pane-actions">
-              <button type="button" className="btn-chamar" onClick={dispararTodos} disabled={disparando || !waConectado}>
-                {disparando ? "Disparando…" : "Disparar em todos os grupos"}
+              <button type="button" className="btn-chamar" onClick={() => dispararAchadinhos()} disabled={disparando || !waConectado}>
+                {disparando ? "Postando…" : "Postar em todos os grupos"}
               </button>
               {disparando ? (
                 <button type="button" onClick={() => { pararRef.current = true; }}>Parar</button>
@@ -524,13 +644,122 @@ export default function AfiliadosPage() {
           </section>
         ) : null}
 
+        {menu === "auto" ? (
+          <section className="crm-pane">
+            <div className="crm-pane-top">
+              <h1>Robô automático</h1>
+              <p>Os grupos grandes mandam uns 100 achadinhos por dia. O ritmo Volume 100 faz o mesmo: um post a cada ~7 minutos, o dia inteiro, sem rajada.</p>
+            </div>
+            <div className="aff-auto-card">
+              <label className="aff-auto-liga">
+                <input
+                  type="checkbox"
+                  checked={Boolean(config.autoAtivo)}
+                  onChange={(e) => salvarAuto({ autoAtivo: e.target.checked })}
+                />
+                <strong>{config.autoAtivo ? "Ligado" : "Desligado"}</strong>
+                <span>{config.autoAtivo ? "Procurando e postando sozinho" : "Nada é enviado até você ligar"}</span>
+              </label>
+              <p className="aff-auto-status">{config.autoStatus || "Ainda não rodou."}</p>
+              <p className="aff-resumo">
+                Hoje: {config.autoMsgsDia || 0}/{config.autoMaxDia || 100} posts
+                {" · "}
+                {config.autoProdutosDia || 0} produtos
+                {config.autoLastGrupo ? ` · último: ${config.autoLastGrupo}` : ""}
+              </p>
+              {config.autoLastTitulo ? <p className="aff-aviso">Última oferta: {config.autoLastTitulo}</p> : null}
+            </div>
+            <div className="aff-ritmos">
+              {Object.values(RITMOS_AUTO).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={config.autoRitmo === item.id ? "is-on" : ""}
+                  onClick={() => salvarAuto({
+                    autoRitmo: item.id,
+                    autoMaxDia: item.id === "volume" ? 100 : item.maxMsgs,
+                    autoIntervaloMin: item.intervaloProdutoMin,
+                  })}
+                >
+                  <strong>{item.label}</strong>
+                  <span>{item.detalhe}</span>
+                </button>
+              ))}
+            </div>
+            <form
+              className="aff-config"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await salvarAuto({
+                  autoRitmo: config.autoRitmo,
+                  autoIntervaloMin: config.autoIntervaloMin,
+                  autoMaxDia: config.autoMaxDia,
+                  autoHoraIni: config.autoHoraIni,
+                  autoHoraFim: config.autoHoraFim,
+                  autoGancho: config.autoGancho || textoExtra,
+                });
+                setProgresso("Ajustes do automático salvos.");
+              }}
+            >
+              <label>
+                Começa às
+                <select
+                  value={config.autoHoraIni}
+                  onChange={(e) => setConfig({ ...config, autoHoraIni: Number(e.target.value) })}
+                >
+                  <option value={8}>08:00</option>
+                  <option value={9}>09:00</option>
+                  <option value={10}>10:00</option>
+                </select>
+              </label>
+              <label>
+                Para às
+                <select
+                  value={config.autoHoraFim}
+                  onChange={(e) => setConfig({ ...config, autoHoraFim: Number(e.target.value) })}
+                >
+                  <option value={20}>20:00</option>
+                  <option value={21}>21:00</option>
+                  <option value={22}>22:00</option>
+                </select>
+              </label>
+              <label>
+                Texto de abertura
+                <input
+                  value={config.autoGancho || ""}
+                  onChange={(e) => setConfig({ ...config, autoGancho: e.target.value })}
+                  maxLength={80}
+                  placeholder="🔥 ACHADINHO"
+                />
+              </label>
+              <button type="submit" className="btn-primary">Salvar horário</button>
+            </form>
+            <ol className="aff-passos">
+              <li>No Volume 100 ele manda cerca de <strong>100 posts por dia</strong> (1 a cada ~7 min, das 8h às 22h).</li>
+              <li>Continua <strong>um grupo por vez</strong>. Não dispara 100 de uma vez — é isso que bane.</li>
+              <li>Aceita até 40 grupos ativos. Com 5 grupos, são ~20 ofertas × 5 = 100 posts.</li>
+              <li>Deixe esta aba aberta no plano gratuito da Vercel.</li>
+              <li>Precisa do Firebase Admin: <code>FIREBASE_SERVICE_ACCOUNT_JSON</code>.</li>
+            </ol>
+            {autoPing ? <p className="crm-erro-banner">{autoPing}</p> : null}
+            {gruposAtivos.length > ritmoAuto(config.autoRitmo).maxGrupos ? (
+              <p className="crm-erro-banner">
+                Você tem {gruposAtivos.length} grupos ativos. Neste ritmo o automático usa só os {ritmoAuto(config.autoRitmo).maxGrupos} primeiros.
+              </p>
+            ) : null}
+            {!waConectado ? (
+              <p className="crm-erro-banner">WhatsApp desconectado. O automático não posta até ler o QR em Conexão.</p>
+            ) : null}
+          </section>
+        ) : null}
+
         {menu === "conexao" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Conexão WhatsApp</h1>
-              <p>Mesma instância do CRM Honda. Conecte para importar grupos e disparar.</p>
+              <p>Este CRM usa o seu celular <strong>11 95202-5568</strong>. O CRM Honda continua no 11 94753-9917.</p>
             </div>
-            <WhatsappStatus />
+            <WhatsappStatus conta="afiliados" onConnected={setWaConectado} />
           </section>
         ) : null}
 
