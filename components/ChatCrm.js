@@ -68,8 +68,9 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
     if (!lead?.id || !mensagens.length) return;
     if (podouRef.current === lead.id) return;
     podouRef.current = lead.id;
-    podarHistoricoAntesDaChamada(lead.id).catch(() => {});
-  }, [lead?.id, mensagens.length]);
+    if (lead.conversaDesde) return;
+    podarHistoricoAntesDaChamada(lead.id, lead).catch(() => {});
+  }, [lead?.id, lead?.conversaDesde, mensagens.length]);
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });

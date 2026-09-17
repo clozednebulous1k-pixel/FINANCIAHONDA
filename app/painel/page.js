@@ -7,7 +7,7 @@ import { useAuth } from "../../components/AuthProvider";
 import InboxConversas from "../../components/InboxConversas";
 import WhatsappStatus from "../../components/WhatsappStatus";
 import { delayAntiBanMs, montarAbordagem } from "../../lib/abordagens";
-import { atualizarLead, atualizarStatus, criarLead, excluirLead, importarLeadsCnh, marcarTodosConstatando, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
+import { atualizarLead, atualizarStatus, criarLead, excluirLead, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
 import { salvarMensagem, limparDuplicadasEmLeads, leadJaFoiChamado, jaEnviouMensagem } from "../../lib/mensagens";
 import { CNH_OPCOES, LIMITES, TIPOS_LEAD, crmDoEmail } from "../../lib/security";
 
@@ -237,12 +237,6 @@ export default function PainelPage() {
     );
   }, [user]);
 
-  useEffect(() => {
-    if (!user || !pronto) return undefined;
-    importarLeadsCnh().catch(() => {});
-    marcarTodosConstatando().catch(() => {});
-    return undefined;
-  }, [user, pronto]);
 
   const visiveis = useMemo(() => {
     const porStatus = filtro === "todos" ? leads : leads.filter((lead) => (lead.status || "novo") === filtro);

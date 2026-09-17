@@ -51,11 +51,11 @@ export async function POST(request) {
         ignoradas += 1;
         continue;
       }
-      const remote =
-        key.remoteJid ||
-        item.remoteJid ||
-        item.sender ||
-        "";
+      const remote = String(key.remoteJid || item.remoteJid || item.sender || "");
+      if (remote.includes("@g.us") || remote.includes("@broadcast")) {
+        ignoradas += 1;
+        continue;
+      }
       const numero = numeroDoRemoteJid(remote);
       const lead = await acharLeadPorWhatsapp(numero);
       if (!lead) {
