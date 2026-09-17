@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { enviarImagemDestino, enviarTextoDestino, evolutionConfigurado } from "../../../../lib/evolution";
+import { enviarOfertaGrupo, evolutionConfigurado } from "../../../../lib/evolution";
 import { montarTextoOferta } from "../../../../lib/textoAchadinho";
 import { textoSeguro, validarWhatsapp } from "../../../../lib/security";
 
@@ -48,16 +48,13 @@ export async function POST(request) {
 
   for (const destino of destinos) {
     try {
-      if (imagem) {
-        try {
-          await enviarImagemDestino(destino, imagem, texto, "afiliados");
-        } catch {
-          await enviarTextoDestino(destino, texto, "afiliados");
-        }
-      } else {
-        await enviarTextoDestino(destino, texto, "afiliados");
-      }
+      const envio = await enviarOfertaGrupo(
+        destino,
+        { texto, imagem },
+        "afiliados",
+      );
       ok += 1;
+      if (!envio.foto) erros.push("texto sem foto");
     } catch (error) {
       falhas += 1;
       erros.push(error.message || "falha");
