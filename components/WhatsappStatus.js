@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export default function WhatsappStatus({ onConnected, conta = "honda" }) {
+export default function WhatsappStatus({ onConnected, conta = "honda", intervaloMs = 8000 }) {
   const [info, setInfo] = useState(null);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -29,10 +29,10 @@ export default function WhatsappStatus({ onConnected, conta = "honda" }) {
 
   useEffect(() => {
     carregar();
-    const timer = setInterval(carregar, 8000);
+    const timer = setInterval(carregar, Math.max(Number(intervaloMs) || 8000, 8000));
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conta]);
+  }, [conta, intervaloMs]);
 
   const conectado = Boolean(info?.connected);
   const qr = info?.qrcode;

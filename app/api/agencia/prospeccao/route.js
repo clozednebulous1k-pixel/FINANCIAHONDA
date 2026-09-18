@@ -19,10 +19,11 @@ export async function POST(request) {
 
   const cidade = textoSeguro(body?.cidade, 80) || "São Paulo";
   const segmento = SEGMENTOS.some((s) => s.id === body?.segmento) ? body.segmento : "todos";
-  const raioKm = Number(body?.raioKm) || 8;
+  const pagina = Math.max(0, Number(body?.pagina) || 0);
+  const excluir = Array.isArray(body?.excluir) ? body.excluir.slice(0, 80) : [];
 
   try {
-    const resultado = await vasculharEmpresas({ cidade, segmento, raioKm });
+    const resultado = await vasculharEmpresas({ cidade, segmento, limite: 10, pagina, excluir });
     return NextResponse.json({ ok: true, ...resultado });
   } catch (error) {
     return NextResponse.json(

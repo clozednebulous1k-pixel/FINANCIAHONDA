@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
 import WhatsappStatus from "../../components/WhatsappStatus";
-import { delayAntiBanMs } from "../../lib/abordagens";
-import { montarAbordagemAgencia, TEXTOS_AGENCIA } from "../../lib/abordagensAgencia";
+import { delayAgenciaMs, LOTE_AGENDA, montarAbordagemAgencia, TEXTOS_AGENCIA } from "../../lib/abordagensAgencia";
 import {
   atualizarLeadAgencia,
   excluirLeadAgencia,
@@ -60,6 +59,8 @@ export default function AgenciaPage() {
   const [progresso, setProgresso] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [manual, setManual] = useState({ nome: "", whatsapp: "", cidade: "São Paulo" });
+  const [pagina, setPagina] = useState(0);
+  const [lote, setLote] = useState([]);
   const pararRef = useRef(false);
 
   const escolhidos = useMemo(
@@ -90,7 +91,7 @@ export default function AgenciaPage() {
       }
     }
     checarWa();
-    const timer = setInterval(checarWa, 15000);
+    const timer = setInterval(checarWa, 90 * 1000);
     return () => {
       ativo = false;
       clearInterval(timer);
@@ -110,18 +111,20 @@ export default function AgenciaPage() {
     setErro("");
     setAvisoMaps("");
     try {
+      const excluir = [...leads.map((l) => l.whatsapp), ...achados.map((l) => l.whatsapp)];
       const res = await fetch("/api/agencia/prospeccao", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cidade, segmento, raioKm: 10 }),
+        body: JSON.stringify({ cidade, segmento, pagina, excluir }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha na busca");
-      setAchados(Array.isArray(data.empresas) ? data.empresas : []);
+      const lista = (Array.isArray(data.empresas) ? data.empresas : []).slice(0, LOTE_AGENDA);
+      setAchados(lista);
       setAvisoMaps(
-        data.total
-          ? `${data.total} empresas sem site em ${cidade}. ${data.comWhatsapp} com celular de WhatsApp.`
-          : "Não achei empresa com telefone e sem site nessa área. Troque a cidade ou o segmento.",
+        lista.length
+          ? `Lote de ${lista.length}. Dispara essas, depois busca as próximas 10.`
+          : "Não achei 10 novas nesta área. Troque a cidade ou o segmento.",
       );
       setMenu("maps");
     } catch (error) {
@@ -132,38 +135,60 @@ export default function AgenciaPage() {
   }
 
   async function guardarAchados(lista) {
-    const fila = (lista || achados).filter((e) => e.whatsappOk).slice(0, 30);
+    const fila = (lista || achados).filter((e) => e.whatsappOk).slice(0, LOTE_AGENDA);
     if (!fila.length) {
       setErro("Nenhuma dessas empresas tem celular de WhatsApp.");
-      return;
+      return [];
     }
     setSalvando(true);
     setErro("");
-    let ok = 0;
+    const conhecidos = leads.map((l) => l.whatsapp);
+    const salvos = [];
     let dup = 0;
     try {
       for (const item of fila) {
-        const salvo = await salvarLeadAgencia(item);
-        if (salvo.duplicado) dup += 1;
-        else ok += 1;
+        const salvo = await salvarLeadAgencia(item, [...conhecidos, ...salvos.map((s) => s.whatsapp)]);
+        if (salvo.duplicado) {
+          dup += 1;
+          continue;
+        }
+        salvos.push({ ...item, id: salvo.id, status: "novo", whatsapp: salvo.whatsapp });
       }
-      const atual = await listarLeadsAgencia();
-      setLeads(atual);
-      setProgresso(`Guardei ${ok} na fila${dup ? ` · ${dup} já estavam` : ""}.`);
-      setMenu("empresas");
+      setLeads((atual) => [...salvos, ...atual].slice(0, 40));
+      setLote(salvos);
+      setSelecionados(Object.fromEntries(salvos.map((l) => [l.id, true])));
+      setProgresso(`Lote pronto: ${salvos.length}${dup ? ` · ${dup} repetidas` : ""}. Agora dispara essas ${salvos.length}.`);
+      setMenu("disparo");
+      return salvos;
     } catch (error) {
       setErro(error.message || "Não foi possível guardar");
+      return [];
     } finally {
       setSalvando(false);
     }
   }
 
+  function horaBrasil() {
+    return Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "America/Sao_Paulo",
+        hour: "2-digit",
+        hourCycle: "h23",
+      }).format(new Date()),
+    );
+  }
+
   async function dispararFila(lista) {
     if (disparando) return;
-    const fila = (lista || escolhidos).slice(0, 25);
+    const origem = Array.isArray(lista) && lista.length
+      ? lista
+      : lote.filter((l) => (l.status || "novo") === "novo");
+    const fila = (origem.length ? origem : escolhidos)
+      .filter((l) => celularWhatsapp(l.whatsapp))
+      .slice(0, LOTE_AGENDA);
     if (!fila.length) {
-      setErro("Escolha empresas novas com WhatsApp na Fila.");
-      setMenu("empresas");
+      setErro("Busque um lote de 10 e guarde na fila antes de disparar.");
+      setMenu("maps");
       return;
     }
     if (!waConectado) {
@@ -171,9 +196,12 @@ export default function AgenciaPage() {
       setMenu("conexao");
       return;
     }
-    if (!window.confirm(`Abordar ${fila.length} empresa(s)? Uma por vez, com pausa de ~45–85s (anti-ban).`)) {
-      return;
-    }
+    const hora = horaBrasil();
+    const aviso =
+      hora < 8 || hora >= 19
+        ? "Fora do horário comercial o risco de ban sobe. Disparar mesmo assim este lote de 10?"
+        : `Chamar ${fila.length} deste lote? Uma por vez, pausa de ~80–120s, sem demonstração.`;
+    if (!window.confirm(aviso)) return;
     pararRef.current = false;
     setDisparando(true);
     setErro("");
@@ -183,7 +211,7 @@ export default function AgenciaPage() {
       if (pararRef.current) break;
       const lead = fila[i];
       const texto = montarAbordagemAgencia(lead, modelo + i);
-      setProgresso(`Enviando ${i + 1}/${fila.length}: ${lead.nome}`);
+      setProgresso(`Lote ${i + 1}/${fila.length}: chamando ${lead.nome}`);
       try {
         const res = await fetch("/api/agencia/disparar", {
           method: "POST",
@@ -192,22 +220,19 @@ export default function AgenciaPage() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Falha no envio");
-        await atualizarLeadAgencia(lead.id, {
-          status: "chamou",
-          ultimaMensagem: texto,
-          chamadoEm: true,
-        });
+        if (lead.id) await atualizarLeadAgencia(lead.id, { status: "chamou", chamadoEm: true });
+        setLeads((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
+        setLote((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
         ok += 1;
       } catch (error) {
         falhas += 1;
         setErro(error.message || "Falha no disparo");
       }
-      if (i < fila.length - 1 && !pararRef.current) await sleep(delayAntiBanMs());
+      if (i < fila.length - 1 && !pararRef.current) await sleep(delayAgenciaMs());
     }
-    const atual = await listarLeadsAgencia().catch(() => leads);
-    setLeads(atual);
     setDisparando(false);
-    setProgresso(`Fim da rodada: ${ok} enviados, ${falhas} falhas.`);
+    setProgresso(`Lote encerrado: ${ok} chamados, ${falhas} falhas. Agora busque as próximas 10.`);
+    setPagina((n) => n + 1);
   }
 
   if (loading || !user) {
@@ -261,8 +286,8 @@ export default function AgenciaPage() {
         {menu === "maps" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
-              <h1>Vasculhar empresas</h1>
-              <p>Busca no mapa negócios locais sem site próprio (e que costumam precisar de sistema).</p>
+              <h1>Vasculhar 10 empresas</h1>
+              <p>Busca 10, chama essas 10, depois busca outras 10. Sem demonstração: puxa atenção e apresenta site/sistema pra tirar gargalo.</p>
             </div>
             <form
               className="aff-busca"
@@ -283,7 +308,7 @@ export default function AgenciaPage() {
                 ))}
               </select>
               <button type="submit" className="btn-chamar" disabled={buscando}>
-                {buscando ? "Vasculhando mapa…" : "Vasculhar agora"}
+                {buscando ? "Buscando 10…" : "Buscar lote de 10"}
               </button>
             </form>
             <div className="ag-chips">
@@ -319,7 +344,7 @@ export default function AgenciaPage() {
                   disabled={salvando}
                   onClick={() => guardarAchados(achados.filter((e) => e.whatsappOk))}
                 >
-                  {salvando ? "Guardando…" : "Guardar quem tem WhatsApp na fila"}
+                  {salvando ? "Guardando lote…" : "Guardar estas 10 e ir disparar"}
                 </button>
               </p>
             ) : null}
@@ -337,7 +362,7 @@ export default function AgenciaPage() {
               onSubmit={async (e) => {
                 e.preventDefault();
                 try {
-                  await salvarLeadAgencia({
+                  const salvo = await salvarLeadAgencia({
                     nome: manual.nome,
                     whatsapp: validarWhatsapp(manual.whatsapp),
                     cidade: manual.cidade || cidade,
@@ -345,9 +370,11 @@ export default function AgenciaPage() {
                     precisaSoftware: true,
                     motivo: "Cadastro manual",
                     categoria: "empresa",
-                  });
+                    origem: "manual",
+                  }, leads.map((l) => l.whatsapp));
+                  if (salvo.duplicado) throw new Error("Essa empresa já está na fila");
                   setManual({ nome: "", whatsapp: "", cidade: manual.cidade || cidade });
-                  setLeads(await listarLeadsAgencia());
+                  setLeads((atual) => [{ id: salvo.id, nome: salvo.nome, whatsapp: salvo.whatsapp, cidade: manual.cidade || cidade, status: "novo" }, ...atual].slice(0, 40));
                 } catch (error) {
                   setErro(error.message || "Não foi possível cadastrar");
                 }
@@ -400,8 +427,8 @@ export default function AgenciaPage() {
         {menu === "disparo" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
-              <h1>Abordar empresas</h1>
-              <p>Mesmo ritmo do Honda: uma mensagem por vez, pausa longa, no número da agência.</p>
+              <h1>Chamar o lote</h1>
+              <p>Primeiro chama, puxa atenção e apresenta site/sistema. Sem demo. Máximo 10, pausa de 80–120s.</p>
             </div>
             <div className="aff-ritmos">
               {TEXTOS_AGENCIA.map((item, idx) => (
@@ -416,7 +443,9 @@ export default function AgenciaPage() {
               ))}
             </div>
             <pre className="aff-preview">{preview}</pre>
-            <p className="aff-resumo">{escolhidos.length} selecionadas na fila</p>
+            <p className="aff-resumo">
+              {lote.filter((l) => (l.status || "novo") === "novo").length || escolhidos.length} neste lote
+            </p>
             <div className="lead-tools">
               <button
                 type="button"
@@ -424,7 +453,7 @@ export default function AgenciaPage() {
                 disabled={disparando || !waConectado}
                 onClick={() => dispararFila()}
               >
-                {disparando ? "Disparando…" : `Disparar ${escolhidos.length || ""}`}
+                {disparando ? "Chamando lote…" : "Disparar este lote (10)"}
               </button>
               {disparando ? (
                 <button type="button" onClick={() => { pararRef.current = true; }}>
@@ -433,10 +462,13 @@ export default function AgenciaPage() {
               ) : null}
               <button
                 type="button"
-                disabled={disparando || !waConectado}
-                onClick={() => dispararFila(novos.filter((l) => celularWhatsapp(l.whatsapp)).slice(0, 15))}
+                disabled={buscando || disparando}
+                onClick={() => {
+                  setMenu("maps");
+                  vasculhar();
+                }}
               >
-                Chamar os 15 novos
+                Buscar próximas 10
               </button>
             </div>
           </section>
@@ -448,7 +480,7 @@ export default function AgenciaPage() {
               <h1>WhatsApp da agência</h1>
               <p>Leia o QR com o celular 11 92603-1750. Número diferente do Honda e do afiliado.</p>
             </div>
-            <WhatsappStatus conta="agencia" onConnected={setWaConectado} />
+            <WhatsappStatus conta="agencia" onConnected={setWaConectado} intervaloMs={30000} />
           </section>
         ) : null}
       </main>
