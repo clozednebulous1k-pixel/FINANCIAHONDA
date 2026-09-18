@@ -29,7 +29,12 @@ export async function POST(request) {
   const numero = telefoneE164(body?.whatsapp || body?.numero);
   const texto = textoMensagem(body?.texto, 4000);
   const leadId = validarId(body?.leadId || "");
-  if (!numero) return NextResponse.json({ error: "WhatsApp inválido" }, { status: 400 });
+  if (!numero) {
+    return NextResponse.json(
+      { ok: true, skipped: true, motivo: "telefone fixo ou inválido" },
+      { status: 200 },
+    );
+  }
   if (!texto) return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
 
   let reservado = false;
@@ -73,6 +78,24 @@ export async function POST(request) {
     data = await enviarTexto(numero, texto, "agencia");
   } catch (error) {
     recentes.delete(numero);
+    const semWa =
+      error.status === 400 ||
+      /não está no WhatsApp|bad request|exists:\s*false|not.*whatsapp/i.test(String(error.message || ""));
+    if (semWa) {
+      if (reservado) {
+        await confirmarDisparo({
+          leadId,
+          numero,
+          conta: "agencia",
+          colecao: "agencia_leads",
+          statusOk: "chamou",
+        }).catch(() => {});
+      }
+      return NextResponse.json(
+        { ok: true, skipped: true, motivo: "sem WhatsApp" },
+        { status: 200 },
+      );
+    }
     if (reservado) {
       await soltarDisparo({ leadId, numero, conta: "agencia", colecao: "agencia_leads" });
     }

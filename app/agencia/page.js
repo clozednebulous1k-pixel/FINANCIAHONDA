@@ -12,7 +12,7 @@ import {
   listarLeadsAgencia,
   salvarLeadAgencia,
 } from "../../lib/agencia";
-import { emailPermitido, formatarWhatsapp, loginDoCrm, validarWhatsapp } from "../../lib/security";
+import { celularWhatsapp, emailPermitido, formatarWhatsapp, loginDoCrm, validarWhatsapp } from "../../lib/security";
 
 const SEGMENTOS = [
   { id: "todos", label: "Todos" },
@@ -174,9 +174,9 @@ export default function AgenciaPage() {
   }
 
   async function guardarAchados(lista) {
-    const fila = (lista || achados).filter((e) => validarWhatsapp(e.whatsapp)).slice(0, LOTE_AGENDA);
+    const fila = (lista || achados).filter((e) => celularWhatsapp(e.whatsapp)).slice(0, LOTE_AGENDA);
     if (!fila.length) {
-      setErro("Nenhuma dessas empresas tem telefone válido.");
+      setErro("Nenhuma dessas empresas tem celular com WhatsApp. Fixo eu pulo.");
       return [];
     }
     setSalvando(true);
@@ -235,8 +235,8 @@ export default function AgenciaPage() {
     const vistos = new Set();
     const fila = [];
     for (const lead of (origem.length ? origem : escolhidos)) {
-      const fone = validarWhatsapp(lead.whatsapp);
-      if (!fone || vistos.has(fone) || jaChamados.has(fone)) continue;
+      const fone = celularWhatsapp(lead.whatsapp) || validarWhatsapp(lead.whatsapp);
+      if (!celularWhatsapp(fone) || vistos.has(fone) || jaChamados.has(fone)) continue;
       if ((lead.status || "novo") !== "novo") continue;
       vistos.add(fone);
       fila.push(lead);
@@ -259,6 +259,25 @@ export default function AgenciaPage() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Falha no envio");
+        if (data.skipped) {
+          const patchSkip = (atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l));
+          if (lead.id) {
+            await atualizarLeadAgencia(lead.id, {
+              status: "chamou",
+              chamadoEm: true,
+              nome: lead.nome,
+              whatsapp: lead.whatsapp,
+              cidade: lead.cidade,
+              osmId: lead.osmId || lead.id,
+            }).catch(() => {});
+          }
+          setLeads(patchSkip);
+          setLote(patchSkip);
+          leadsRef.current = patchSkip(leadsRef.current);
+          loteRef.current = patchSkip(loteRef.current);
+          setProgresso(`Lote ${loteN}: ${lead.nome} sem WhatsApp. Pulando.`);
+          continue;
+        }
         const patch = (atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l));
         if (lead.id) {
           await atualizarLeadAgencia(lead.id, {
