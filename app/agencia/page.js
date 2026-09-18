@@ -61,12 +61,17 @@ export default function AgenciaPage() {
   const [manual, setManual] = useState({ nome: "", whatsapp: "", cidade: "São Paulo" });
   const [lote, setLote] = useState([]);
   const [nivel, setNivel] = useState(null);
+  const [autoLigado, setAutoLigado] = useState(false);
   const pararRef = useRef(false);
   const autoRef = useRef(false);
+  const rodandoRef = useRef(false);
   const waRef = useRef(false);
   const loteRef = useRef([]);
   const leadsRef = useRef([]);
   const achadosRef = useRef([]);
+  const cidadeRef = useRef(cidade);
+  const segmentoRef = useRef(segmento);
+  const modeloRef = useRef(modelo);
 
   const escolhidos = useMemo(
     () => leads.filter((l) => selecionados[l.id] && l.status === "novo" && validarWhatsapp(l.whatsapp)),
@@ -86,6 +91,9 @@ export default function AgenciaPage() {
   useEffect(() => { loteRef.current = lote; }, [lote]);
   useEffect(() => { leadsRef.current = leads; }, [leads]);
   useEffect(() => { achadosRef.current = achados; }, [achados]);
+  useEffect(() => { cidadeRef.current = cidade; }, [cidade]);
+  useEffect(() => { segmentoRef.current = segmento; }, [segmento]);
+  useEffect(() => { modeloRef.current = modelo; }, [modelo]);
 
   useEffect(() => {
     fetch("/api/agencia/prospeccao")
@@ -142,7 +150,7 @@ export default function AgenciaPage() {
       const res = await fetch("/api/agencia/prospeccao", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cidade, segmento, excluir }),
+        body: JSON.stringify({ cidade: cidadeRef.current, segmento: segmentoRef.current, excluir }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha na busca");
@@ -201,14 +209,17 @@ export default function AgenciaPage() {
     }
   }
 
-  function horaBrasil() {
-    return Number(
-      new Intl.DateTimeFormat("en-GB", {
-        timeZone: "America/Sao_Paulo",
-        hour: "2-digit",
-        hourCycle: "h23",
-      }).format(new Date()),
-    );
+  async function esperar(ms, texto) {
+    const fim = Date.now() + ms;
+    while (Date.now() < fim) {
+      if (pararRef.current || !autoRef.current) return false;
+      if (texto) {
+        const restam = Math.max(0, Math.ceil((fim - Date.now()) / 1000));
+        setProgresso(`${texto} ${restam}s…`);
+      }
+      await sleep(1000);
+    }
+    return autoRef.current && !pararRef.current;
   }
 
   async function dispararFila(lista, { loteN = 1 } = {}) {
@@ -232,17 +243,13 @@ export default function AgenciaPage() {
       if (fila.length >= LOTE_AGENDA) break;
     }
     if (!fila.length) return { ok: 0, falhas: 0, parou: false };
-    if (!waRef.current) {
-      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 95202-5568.");
-      setMenu("conexao");
-      return { ok: 0, falhas: 0, parou: true };
-    }
+    if (!waRef.current) return { ok: 0, falhas: 0, parou: false, semWhatsapp: true };
     let ok = 0;
     let falhas = 0;
     for (let i = 0; i < fila.length; i += 1) {
-      if (pararRef.current) break;
+      if (pararRef.current || !autoRef.current) break;
       const lead = fila[i];
-      const texto = montarAbordagemAgencia(lead, modelo + i);
+      const texto = montarAbordagemAgencia(lead, modeloRef.current + i);
       setProgresso(`Lote ${loteN}: ${i + 1}/${fila.length} · chamando ${lead.nome}`);
       try {
         const res = await fetch("/api/agencia/disparar", {
@@ -272,84 +279,112 @@ export default function AgenciaPage() {
         falhas += 1;
         setErro(error.message || "Falha no disparo");
       }
-      if (i < fila.length - 1 && !pararRef.current) await sleep(delayAgenciaMs());
+      if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
+        await esperar(delayAgenciaMs(), `Lote ${loteN}: ${ok} enviados. Próxima em`);
+      }
     }
-    return { ok, falhas, parou: pararRef.current };
+    return { ok, falhas, parou: pararRef.current || !autoRef.current };
   }
 
-  async function dispararAutomatico(listaInicial) {
-    if (autoRef.current || disparando) return;
-    if (!waRef.current) {
-      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 95202-5568.");
-      setMenu("conexao");
-      return;
-    }
-    const hora = horaBrasil();
-    const aviso =
-      hora < 8 || hora >= 19
-        ? "Fora do horário comercial o risco de ban sobe. Disparar automático mesmo assim (10, depois mais 10, sem repetir empresa)?"
-        : "Disparo automático: chama 10, busca outras 10 novas e segue sozinho. A mesma empresa não entra de novo. Parar cancela.";
-    if (!window.confirm(aviso)) return;
-
-    pararRef.current = false;
-    autoRef.current = true;
-    setDisparando(true);
-    setErro("");
+  async function rodarAutomatico() {
+    if (rodandoRef.current) return;
+    rodandoRef.current = true;
     let lotes = 0;
     let totalOk = 0;
     let totalFalhas = 0;
-
+    setDisparando(true);
+    setErro("");
     try {
-      let fila = Array.isArray(listaInicial) && listaInicial.length
-        ? listaInicial
-        : loteRef.current.filter((l) => (l.status || "novo") === "novo");
-
-      while (!pararRef.current && autoRef.current) {
+      while (autoRef.current && !pararRef.current) {
+        try {
+          const resWa = await fetch("/api/whatsapp/status?conta=agencia", { cache: "no-store" });
+          const dataWa = await resWa.json();
+          waRef.current = Boolean(dataWa.connected);
+          setWaConectado(waRef.current);
+        } catch {
+          waRef.current = false;
+        }
         if (!waRef.current) {
-          setErro("WhatsApp desconectou. Disparo automático parado.");
-          break;
+          setErro("WhatsApp desconectado. Automático ligado: reconecte em Conexão que eu sigo.");
+          const okEspera = await esperar(15000, "Aguardando WhatsApp. Nova tentativa em");
+          if (!okEspera) break;
+          continue;
+        }
+
+        let fila = loteRef.current.filter((l) => (l.status || "novo") === "novo" && validarWhatsapp(l.whatsapp));
+        if (!fila.length) {
+          fila = leadsRef.current
+            .filter((l) => (l.status || "novo") === "novo" && validarWhatsapp(l.whatsapp))
+            .slice(0, LOTE_AGENDA);
         }
         if (!fila.length) {
-          setProgresso(
-            lotes
-              ? `Lote ${lotes} encerrado (${totalOk} chamadas). Buscando mais 10 empresas novas…`
-              : "Buscando o primeiro lote de 10 empresas novas…",
-          );
+          setProgresso("Procurando 10 empresas novas no mapa…");
           const encontradas = await vasculhar();
-          if (pararRef.current) break;
+          if (!autoRef.current || pararRef.current) break;
           if (!encontradas.length) {
-            setProgresso(
-              lotes
-                ? `Automático encerrado: não achei empresa nova. ${totalOk} chamadas em ${lotes} lote(s).`
-                : "Não achei empresa nova para chamar.",
-            );
-            break;
+            const okEspera = await esperar(25000, "Não achei empresa nova agora. Procurando de novo em");
+            if (!okEspera) break;
+            continue;
           }
           fila = await guardarAchados(encontradas);
-          if (pararRef.current) break;
+          if (!autoRef.current || pararRef.current) break;
           if (!fila.length) {
-            setProgresso(`Automático encerrado: as encontradas já tinham sido chamadas. ${totalOk} envios.`);
-            break;
+            const okEspera = await esperar(8000, "Essas já estavam na fila. Procurando outras em");
+            if (!okEspera) break;
+            continue;
           }
-          setMenu("disparo");
         }
 
         lotes += 1;
+        setMenu("disparo");
         const r = await dispararFila(fila, { loteN: lotes });
         totalOk += r.ok;
         totalFalhas += r.falhas;
-        fila = [];
         loteRef.current = [];
         setLote([]);
-        if (r.parou) break;
+        if (!autoRef.current || pararRef.current) break;
+        if (r.semWhatsapp) {
+          const okEspera = await esperar(15000, "WhatsApp off. Tentando de novo em");
+          if (!okEspera) break;
+          continue;
+        }
+        if (!r.ok && !r.falhas) {
+          const okEspera = await esperar(8000, "Nada para chamar neste lote. Procurando outras em");
+          if (!okEspera) break;
+          continue;
+        }
+        setProgresso(`Lote ${lotes} ok: ${totalOk} chamadas. Procurando as próximas 10…`);
       }
     } finally {
-      autoRef.current = false;
+      rodandoRef.current = false;
       setDisparando(false);
-      if (pararRef.current) {
-        setProgresso(`Parado: ${totalOk} chamadas, ${totalFalhas} falhas, ${lotes} lote(s).`);
+      if (!autoRef.current || pararRef.current) {
+        setProgresso(
+          `Automático desativado. ${totalOk} chamadas, ${totalFalhas} falhas, ${lotes} lote(s).`,
+        );
       }
     }
+  }
+
+  function desligarAutomatico() {
+    pararRef.current = true;
+    autoRef.current = false;
+    setAutoLigado(false);
+  }
+
+  function ligarAutomatico() {
+    if (rodandoRef.current || autoRef.current) return;
+    pararRef.current = false;
+    autoRef.current = true;
+    setAutoLigado(true);
+    setErro("");
+    setProgresso("Automático ligado. Procurando e chamando de 10 em 10 até você desativar.");
+    rodarAutomatico();
+  }
+
+  function toggleAutomatico() {
+    if (autoRef.current) desligarAutomatico();
+    else ligarAutomatico();
   }
 
   if (loading || !user) {
@@ -397,8 +432,22 @@ export default function AgenciaPage() {
       </aside>
 
       <main className="crm-main">
+        <div className={`ag-auto-bar ${autoLigado ? "is-on" : ""}`}>
+          <button
+            type="button"
+            className={`ag-auto-toggle ${autoLigado ? "is-on" : "is-off"}`}
+            onClick={toggleAutomatico}
+          >
+            {autoLigado ? "Desativar automático" : "Ligar automático"}
+          </button>
+          <p className="ag-auto-status">
+            {autoLigado
+              ? (progresso || "Ligado: procurando e chamando de 10 em 10. Toque em Desativar para parar.")
+              : "Desligado. Liga e eu procuro 10, chamo, procuro mais 10 e sigo até você desativar."}
+          </p>
+        </div>
         {erro ? <p className="crm-erro-banner">{erro}</p> : null}
-        {progresso ? <p className="aff-aviso">{progresso}</p> : null}
+        {progresso && !autoLigado ? <p className="aff-aviso">{progresso}</p> : null}
 
         {menu === "maps" ? (
           <section className="crm-pane">
@@ -432,7 +481,7 @@ export default function AgenciaPage() {
                   <option key={item.id} value={item.id}>{item.label}</option>
                 ))}
               </select>
-              <button type="submit" className="btn-chamar" disabled={buscando}>
+              <button type="submit" className="btn-chamar" disabled={buscando || autoLigado}>
                 {buscando ? "Buscando 10…" : "Buscar lote de 10"}
               </button>
             </form>
@@ -467,12 +516,9 @@ export default function AgenciaPage() {
                   type="button"
                   className="btn-chamar"
                   disabled={salvando}
-                  onClick={async () => {
-                    const salvos = await guardarAchados(achados.filter((e) => validarWhatsapp(e.whatsapp)));
-                    if (salvos.length) dispararAutomatico(salvos);
-                  }}
+                  onClick={ligarAutomatico}
                 >
-                  {salvando ? "Guardando lote…" : "Guardar e disparar automático"}
+                  {autoLigado ? "Automático já está ligado" : "Ligar automático agora"}
                 </button>
               </p>
             ) : null}
@@ -585,8 +631,8 @@ export default function AgenciaPage() {
         {menu === "disparo" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
-              <h1>Chamar automático</h1>
-              <p>Chama 10, busca outras 10 novas e segue. Pausa de 85 a 130s. Não repete empresa.</p>
+              <h1>Disparo</h1>
+              <p>O botão verde em cima liga o automático: procura e chama até você desativar.</p>
             </div>
             <div className="aff-ritmos">
               {TEXTOS_AGENCIA.map((item, idx) => (
@@ -607,23 +653,11 @@ export default function AgenciaPage() {
             <div className="lead-tools">
               <button
                 type="button"
-                className="btn-chamar"
-                disabled={disparando || !waConectado}
-                onClick={() => dispararAutomatico()}
+                className={`btn-chamar ${autoLigado ? "is-stop" : ""}`}
+                onClick={toggleAutomatico}
               >
-                {disparando ? "Chamando automático…" : "Disparar automático (10 e mais 10)"}
+                {autoLigado ? "Desativar automático" : "Ligar automático"}
               </button>
-              {disparando ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    pararRef.current = true;
-                    autoRef.current = false;
-                  }}
-                >
-                  Parar
-                </button>
-              ) : null}
             </div>
           </section>
         ) : null}
