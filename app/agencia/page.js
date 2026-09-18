@@ -167,7 +167,7 @@ export default function AgenciaPage() {
       return;
     }
     if (!waConectado) {
-      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o número da agência.");
+      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 92603-1750.");
       setMenu("conexao");
       return;
     }
@@ -225,7 +225,7 @@ export default function AgenciaPage() {
           <span className="crm-mark">S</span>
           <div>
             <strong>CRM Agência</strong>
-            <small>{waConectado ? "WhatsApp on" : "WhatsApp off"}</small>
+            <small>{waConectado ? "11 92603-1750 on" : "11 92603-1750 off"}</small>
           </div>
         </div>
         <nav className="crm-menu">
@@ -446,7 +446,7 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>WhatsApp da agência</h1>
-              <p>Número diferente do Honda e do afiliado. Leia o QR neste celular.</p>
+              <p>Leia o QR com o celular 11 92603-1750. Número diferente do Honda e do afiliado.</p>
             </div>
             <WhatsappStatus conta="agencia" onConnected={setWaConectado} />
           </section>
