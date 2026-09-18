@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
 import WhatsappStatus from "../../components/WhatsappStatus";
-import { delayAgenciaMs, delayBalaoAgenciaMs, LOTE_AGENDA, montarAbordagemAgencia, montarBaloesAgencia, TEXTOS_AGENCIA } from "../../lib/abordagensAgencia";
+import { delayAgenciaMs, LOTE_AGENDA, montarAbordagemAgencia, TEXTOS_AGENCIA } from "../../lib/abordagensAgencia";
 import {
   atualizarLeadAgencia,
   excluirLeadAgencia,
@@ -221,27 +221,16 @@ export default function AgenciaPage() {
     for (let i = 0; i < fila.length; i += 1) {
       if (pararRef.current) break;
       const lead = fila[i];
-      const textos = montarBaloesAgencia(lead, modelo + i);
-      const seq = `${lead.id || lead.whatsapp}-${Date.now()}`;
+      const texto = montarAbordagemAgencia(lead, modelo + i);
+      setProgresso(`Lote ${i + 1}/${fila.length}: chamando ${lead.nome}`);
       try {
-        for (let b = 0; b < textos.length; b += 1) {
-          if (pararRef.current) break;
-          setProgresso(`Lote ${i + 1}/${fila.length}: ${lead.nome} · balão ${b + 1}/${textos.length}`);
-          const res = await fetch("/api/agencia/disparar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              whatsapp: lead.whatsapp,
-              textos: [textos[b]],
-              seq,
-              leadId: lead.id,
-            }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Falha no envio");
-          if (b < textos.length - 1) await sleep(delayBalaoAgenciaMs());
-        }
-        if (pararRef.current) break;
+        const res = await fetch("/api/agencia/disparar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ whatsapp: lead.whatsapp, texto, leadId: lead.id }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Falha no envio");
         if (lead.id) await atualizarLeadAgencia(lead.id, { status: "chamou", chamadoEm: true });
         setLeads((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
         setLote((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
@@ -458,7 +447,7 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Chamar o lote</h1>
-              <p>Cada empresa recebe vários balões separados no WhatsApp, não um bloco só. Pausa de 85 a 130s entre empresas.</p>
+              <p>Um balão só, com estrofes separadas. Pausa de 85 a 130s entre empresas.</p>
             </div>
             <div className="aff-ritmos">
               {TEXTOS_AGENCIA.map((item, idx) => (
