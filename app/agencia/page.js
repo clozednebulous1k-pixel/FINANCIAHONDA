@@ -287,7 +287,7 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Vasculhar 10 empresas</h1>
-              <p>Busca 10, chama essas 10, depois busca outras 10. Sem demonstração: puxa atenção e apresenta site/sistema pra tirar gargalo.</p>
+              <p>Busca 10, chama essas 10, depois busca outras 10. Sem demonstração: puxa atenção e apresenta site, landing page, marketing e sistema.</p>
             </div>
             <form
               className="aff-busca"
