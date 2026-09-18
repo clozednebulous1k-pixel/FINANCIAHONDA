@@ -12,6 +12,7 @@ service cloud.firestore {
         && request.auth.token.email is string
         && request.auth.token.email.lower() in [
           'afiliados.crm@gmail.com',
+          'agencia.crm@gmail.com',
           'matheus.honda@gmail.com'
         ];
     }
@@ -87,6 +88,10 @@ service cloud.firestore {
     }
 
     match /afiliados_disparos/{id} {
+      allow read, write: if afiliado();
+    }
+
+    match /agencia_leads/{id} {
       allow read, write: if afiliado();
     }
   }

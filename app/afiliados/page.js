@@ -436,6 +436,7 @@ export default function AfiliadosPage() {
         </nav>
         <div className="crm-nav-foot">
           <a href="/painel">CRM Honda</a>
+          <a href="/agencia">CRM Agência</a>
           <button type="button" onClick={() => logout()}>Sair</button>
         </div>
       </aside>

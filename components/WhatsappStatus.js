@@ -36,8 +36,8 @@ export default function WhatsappStatus({ onConnected, conta = "honda" }) {
 
   const conectado = Boolean(info?.connected);
   const qr = info?.qrcode;
-  const titulo = info?.titulo || (conta === "afiliados" ? "WhatsApp Afiliados" : "WhatsApp Business");
-  const numero = info?.numeroFormatado || (conta === "afiliados" ? "11 95202-5568" : "11 94753-9917");
+  const titulo = info?.titulo || (conta === "afiliados" ? "WhatsApp Afiliados" : conta === "agencia" ? "WhatsApp Agência" : "WhatsApp Business");
+  const numero = info?.numeroFormatado || (conta === "afiliados" ? "11 95202-5568" : conta === "agencia" ? "número da agência" : "11 94753-9917");
 
   return (
     <section className="painel-card wa-status-card">
@@ -67,7 +67,9 @@ export default function WhatsappStatus({ onConnected, conta = "honda" }) {
           <p>
             {conta === "afiliados"
               ? "No celular 11 95202-5568: WhatsApp → Aparelhos conectados → Conectar aparelho"
-              : "No celular: WhatsApp Business → Aparelhos conectados → Conectar aparelho"}
+              : conta === "agencia"
+                ? "No celular da agência: WhatsApp → Aparelhos conectados → Conectar aparelho"
+                : "No celular: WhatsApp Business → Aparelhos conectados → Conectar aparelho"}
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -83,7 +85,9 @@ export default function WhatsappStatus({ onConnected, conta = "honda" }) {
         <p className="wa-ok">
           {conta === "afiliados"
             ? "Pronto. Os disparos de afiliado saem deste número."
-            : "Pronto. Pode chamar os leads e usar o chat do CRM."}
+            : conta === "agencia"
+              ? "Pronto. Os disparos para empresas saem deste número."
+              : "Pronto. Pode chamar os leads e usar o chat do CRM."}
         </p>
       ) : null}
     </section>

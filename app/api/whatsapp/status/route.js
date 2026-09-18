@@ -16,7 +16,8 @@ const WEBHOOK_URL =
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const conta = searchParams.get("conta") === "afiliados" ? "afiliados" : "honda";
+  const raw = searchParams.get("conta");
+  const conta = raw === "afiliados" || raw === "agencia" ? raw : "honda";
   const cfg = contaWhatsapp(conta);
 
   if (!evolutionConfigurado()) {

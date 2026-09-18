@@ -220,6 +220,7 @@ export default function PainelPage() {
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
     if (!loading && user && crmDoEmail(user.email) === "afiliados") router.replace("/afiliados");
+    if (!loading && user && crmDoEmail(user.email) === "agencia") router.replace("/agencia");
   }, [loading, user, router]);
 
   useEffect(() => {
@@ -523,6 +524,7 @@ export default function PainelPage() {
 
         <div className="crm-nav-foot">
           <Link href="/afiliados">CRM Afiliados</Link>
+          <Link href="/agencia">CRM Agência</Link>
           <Link href="/">Formulário</Link>
           <button type="button" onClick={logout}>Sair</button>
         </div>

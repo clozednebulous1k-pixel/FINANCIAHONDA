@@ -132,6 +132,8 @@ export default function LoginAfiliadosPage() {
       </form>
       <p className="auth-switch">
         CRM Honda? <Link href="/login">Entrar no painel de leads</Link>
+        {" · "}
+        Agência? <Link href="/login-agencia">Sites e sistemas</Link>
       </p>
     </main>
   );
