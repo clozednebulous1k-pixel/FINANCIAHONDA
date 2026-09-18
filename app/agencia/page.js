@@ -12,10 +12,10 @@ import {
   listarLeadsAgencia,
   salvarLeadAgencia,
 } from "../../lib/agencia";
-import { celularWhatsapp, emailPermitido, formatarWhatsapp, loginDoCrm, validarWhatsapp } from "../../lib/security";
+import { emailPermitido, formatarWhatsapp, loginDoCrm, validarWhatsapp } from "../../lib/security";
 
 const SEGMENTOS = [
-  { id: "todos", label: "Todos (sem site)" },
+  { id: "todos", label: "Todos" },
   { id: "salao", label: "Salão / estética" },
   { id: "oficina", label: "Oficina / auto" },
   { id: "clinica", label: "Clínica / saúde" },
@@ -64,7 +64,7 @@ export default function AgenciaPage() {
   const pararRef = useRef(false);
 
   const escolhidos = useMemo(
-    () => leads.filter((l) => selecionados[l.id] && l.status === "novo" && celularWhatsapp(l.whatsapp)),
+    () => leads.filter((l) => selecionados[l.id] && l.status === "novo" && validarWhatsapp(l.whatsapp)),
     [leads, selecionados],
   );
   const novos = useMemo(() => leads.filter((l) => (l.status || "novo") === "novo"), [leads]);
@@ -135,9 +135,9 @@ export default function AgenciaPage() {
   }
 
   async function guardarAchados(lista) {
-    const fila = (lista || achados).filter((e) => e.whatsappOk).slice(0, LOTE_AGENDA);
+    const fila = (lista || achados).filter((e) => validarWhatsapp(e.whatsapp)).slice(0, LOTE_AGENDA);
     if (!fila.length) {
-      setErro("Nenhuma dessas empresas tem celular de WhatsApp.");
+      setErro("Nenhuma dessas empresas tem telefone válido.");
       return [];
     }
     setSalvando(true);
@@ -184,7 +184,7 @@ export default function AgenciaPage() {
       ? lista
       : lote.filter((l) => (l.status || "novo") === "novo");
     const fila = (origem.length ? origem : escolhidos)
-      .filter((l) => celularWhatsapp(l.whatsapp))
+      .filter((l) => validarWhatsapp(l.whatsapp))
       .slice(0, LOTE_AGENDA);
     if (!fila.length) {
       setErro("Busque um lote de 10 e guarde na fila antes de disparar.");
@@ -200,7 +200,7 @@ export default function AgenciaPage() {
     const aviso =
       hora < 8 || hora >= 19
         ? "Fora do horário comercial o risco de ban sobe. Disparar mesmo assim este lote de 10?"
-        : `Chamar ${fila.length} deste lote? Uma por vez, pausa de ~80–120s, sem demonstração.`;
+        : `Chamar ${fila.length} deste lote? Cada uma com texto diferente, pausa de 85 a 130s, sem demonstração.`;
     if (!window.confirm(aviso)) return;
     pararRef.current = false;
     setDisparando(true);
@@ -342,7 +342,7 @@ export default function AgenciaPage() {
                   type="button"
                   className="btn-chamar"
                   disabled={salvando}
-                  onClick={() => guardarAchados(achados.filter((e) => e.whatsappOk))}
+                  onClick={() => guardarAchados(achados.filter((e) => validarWhatsapp(e.whatsapp)))}
                 >
                   {salvando ? "Guardando lote…" : "Guardar estas 10 e ir disparar"}
                 </button>
@@ -402,7 +402,7 @@ export default function AgenciaPage() {
                     <input
                       type="checkbox"
                       checked={Boolean(selecionados[lead.id])}
-                      disabled={lead.status !== "novo" || !celularWhatsapp(lead.whatsapp)}
+                      disabled={lead.status !== "novo" || !validarWhatsapp(lead.whatsapp)}
                       onChange={(e) =>
                         setSelecionados((atual) => ({ ...atual, [lead.id]: e.target.checked }))
                       }
@@ -428,7 +428,7 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Chamar o lote</h1>
-              <p>Primeiro chama, puxa atenção e apresenta site/sistema. Sem demo. Máximo 10, pausa de 80–120s.</p>
+              <p>Cada disparo usa um texto diferente (reunião, tráfego pago, site). Sem demo. Máximo 10, pausa de 85 a 130s.</p>
             </div>
             <div className="aff-ritmos">
               {TEXTOS_AGENCIA.map((item, idx) => (

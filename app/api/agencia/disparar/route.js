@@ -6,7 +6,7 @@ import { textoSeguro } from "../../../../lib/security";
 export const dynamic = "force-dynamic";
 
 const recentes = new Map();
-const COOLDOWN_MS = 80 * 1000;
+const COOLDOWN_MS = 85 * 1000;
 
 export async function POST(request) {
   if (!evolutionConfigurado()) {
