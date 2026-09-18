@@ -61,6 +61,7 @@ export default function AgenciaPage() {
   const [manual, setManual] = useState({ nome: "", whatsapp: "", cidade: "São Paulo" });
   const [pagina, setPagina] = useState(0);
   const [lote, setLote] = useState([]);
+  const [nivel, setNivel] = useState(null);
   const pararRef = useRef(false);
 
   const escolhidos = useMemo(
@@ -72,6 +73,15 @@ export default function AgenciaPage() {
     () => montarAbordagemAgencia(escolhidos[0] || achados[0] || { nome: "sua empresa", cidade }, modelo),
     [escolhidos, achados, cidade, modelo],
   );
+
+  useEffect(() => {
+    fetch("/api/agencia/prospeccao")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.nivel) setNivel(data.nivel);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace(loginDoCrm("agencia"));
@@ -121,10 +131,11 @@ export default function AgenciaPage() {
       if (!res.ok) throw new Error(data.error || "Falha na busca");
       const lista = (Array.isArray(data.empresas) ? data.empresas : []).slice(0, LOTE_AGENDA);
       setAchados(lista);
+      if (data.nivel) setNivel(data.nivel);
       setAvisoMaps(
         lista.length
-          ? `Lote de ${lista.length}. Dispara essas, depois busca as próximas 10.`
-          : "Não achei 10 novas nesta área. Troque a cidade ou o segmento.",
+          ? `Lote de ${lista.length} ${data.nivel?.label ? `(nível ${data.nivel.nivel}: ${data.nivel.label})` : ""}. Dispara essas, depois busca as próximas 10.`
+          : "Não achei 10 pequenas novas nesta área. Troque a cidade ou o segmento.",
       );
       setMenu("maps");
     } catch (error) {
@@ -192,7 +203,7 @@ export default function AgenciaPage() {
       return;
     }
     if (!waConectado) {
-      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 92603-1750.");
+      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 95202-5568.");
       setMenu("conexao");
       return;
     }
@@ -250,7 +261,7 @@ export default function AgenciaPage() {
           <span className="crm-mark">S</span>
           <div>
             <strong>CRM Agência</strong>
-            <small>{waConectado ? "11 92603-1750 on" : "11 92603-1750 off"}</small>
+            <small>{waConectado ? "11 95202-5568 on" : "11 95202-5568 off"}</small>
           </div>
         </div>
         <nav className="crm-menu">
@@ -287,7 +298,15 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Vasculhar 10 empresas</h1>
-              <p>Busca 10, chama essas 10, depois busca outras 10. Sem demonstração: puxa atenção e apresenta site, landing page, marketing e sistema.</p>
+              <p>
+                {nivel
+                  ? `Nível ${nivel.nivel} agora: ${nivel.label}. ${nivel.detalhe}${
+                      nivel.proximoEm
+                        ? ` Sobe sozinho para ${nivel.proximoLabel} em ${nivel.proximoEm} dia${nivel.proximoEm === 1 ? "" : "s"}.`
+                        : ""
+                    }`
+                  : "Começa nas pequenas empresas e sobe o porte com o tempo."}
+              </p>
             </div>
             <form
               className="aff-busca"
@@ -478,7 +497,7 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>WhatsApp da agência</h1>
-              <p>Leia o QR com o celular 11 92603-1750. Número diferente do Honda e do afiliado.</p>
+              <p>Leia o QR com o celular 11 95202-5568. Os disparos da agência saem deste número.</p>
             </div>
             <WhatsappStatus conta="agencia" onConnected={setWaConectado} intervaloMs={30000} />
           </section>

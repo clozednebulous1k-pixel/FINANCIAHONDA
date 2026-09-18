@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { vasculharEmpresas, SEGMENTOS } from "../../../../lib/prospeccao";
+import { vasculharEmpresas, SEGMENTOS, nivelProspeccao } from "../../../../lib/prospeccao";
 import { textoSeguro } from "../../../../lib/security";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET() {
-  return NextResponse.json({ ok: true, segmentos: SEGMENTOS });
+  return NextResponse.json({ ok: true, segmentos: SEGMENTOS, nivel: nivelProspeccao() });
 }
 
 export async function POST(request) {
