@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { vasculharEmpresas, SEGMENTOS, nivelProspeccao } from "../../../../lib/prospeccao";
 import { textoSeguro } from "../../../../lib/security";
+import {
+  adminPronto,
+  listarExclusoesAgencia,
+  registrarEmpresasVistas,
+} from "../../../../lib/firebaseAdmin";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,11 +24,28 @@ export async function POST(request) {
 
   const cidade = textoSeguro(body?.cidade, 80) || "São Paulo";
   const segmento = SEGMENTOS.some((s) => s.id === body?.segmento) ? body.segmento : "todos";
-  const pagina = Math.max(0, Number(body?.pagina) || 0);
-  const excluir = Array.isArray(body?.excluir) ? body.excluir.slice(0, 80) : [];
+  let excluir = Array.isArray(body?.excluir) ? body.excluir.slice(0, 200) : [];
+  let excluirNomes = [];
+  let excluirOsm = [];
 
   try {
-    const resultado = await vasculharEmpresas({ cidade, segmento, limite: 10, pagina, excluir });
+    if (adminPronto()) {
+      const extra = await listarExclusoesAgencia();
+      excluir = [...excluir, ...extra.fones];
+      excluirNomes = extra.nomes;
+      excluirOsm = extra.osm;
+    }
+    const resultado = await vasculharEmpresas({
+      cidade,
+      segmento,
+      limite: 10,
+      excluir,
+      excluirNomes,
+      excluirOsm,
+    });
+    if (adminPronto() && resultado.empresas?.length) {
+      await registrarEmpresasVistas(resultado.empresas);
+    }
     return NextResponse.json({ ok: true, ...resultado });
   } catch (error) {
     return NextResponse.json(

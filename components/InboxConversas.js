@@ -244,7 +244,7 @@ export default function InboxConversas({
           >
             {limpandoDup ? "Limpando…" : "Apagar msgs duplicadas"}
           </button>
-          <small>Botão direito na conversa → Apagar · anti-ban ≈ 45–85s · max 10</small>
+          <small>Botão direito na conversa → Apagar · anti-ban ≈ 45–85s · segue sozinho até acabar</small>
         </div>
 
         {progresso ? <p className="wa-progress">{progresso}</p> : null}

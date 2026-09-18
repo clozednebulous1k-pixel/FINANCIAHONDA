@@ -96,6 +96,10 @@ service cloud.firestore {
       allow read, write: if afiliado();
     }
 
+    match /agencia_vistos/{id} {
+      allow read, write: if afiliado();
+    }
+
     match /disparo_numeros/{id} {
       allow read, write: if false;
     }

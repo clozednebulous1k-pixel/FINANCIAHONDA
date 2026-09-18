@@ -59,20 +59,33 @@ export default function AgenciaPage() {
   const [progresso, setProgresso] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [manual, setManual] = useState({ nome: "", whatsapp: "", cidade: "São Paulo" });
-  const [pagina, setPagina] = useState(0);
   const [lote, setLote] = useState([]);
   const [nivel, setNivel] = useState(null);
   const pararRef = useRef(false);
+  const autoRef = useRef(false);
+  const waRef = useRef(false);
+  const loteRef = useRef([]);
+  const leadsRef = useRef([]);
+  const achadosRef = useRef([]);
 
   const escolhidos = useMemo(
     () => leads.filter((l) => selecionados[l.id] && l.status === "novo" && validarWhatsapp(l.whatsapp)),
     [leads, selecionados],
   );
   const novos = useMemo(() => leads.filter((l) => (l.status || "novo") === "novo"), [leads]);
+  const chamados = useMemo(
+    () => leads.filter((l) => (l.status || "novo") !== "novo" || l.chamadoEm),
+    [leads],
+  );
   const preview = useMemo(
     () => montarAbordagemAgencia(escolhidos[0] || achados[0] || { nome: "sua empresa", cidade }, modelo),
     [escolhidos, achados, cidade, modelo],
   );
+
+  useEffect(() => { waRef.current = waConectado; }, [waConectado]);
+  useEffect(() => { loteRef.current = lote; }, [lote]);
+  useEffect(() => { leadsRef.current = leads; }, [leads]);
+  useEffect(() => { achadosRef.current = achados; }, [achados]);
 
   useEffect(() => {
     fetch("/api/agencia/prospeccao")
@@ -121,25 +134,32 @@ export default function AgenciaPage() {
     setErro("");
     setAvisoMaps("");
     try {
-      const excluir = [...leads.map((l) => l.whatsapp), ...achados.map((l) => l.whatsapp)];
+      const excluir = [
+        ...leadsRef.current.map((l) => l.whatsapp),
+        ...achadosRef.current.map((l) => l.whatsapp),
+        ...loteRef.current.map((l) => l.whatsapp),
+      ];
       const res = await fetch("/api/agencia/prospeccao", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cidade, segmento, pagina, excluir }),
+        body: JSON.stringify({ cidade, segmento, excluir }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Falha na busca");
       const lista = (Array.isArray(data.empresas) ? data.empresas : []).slice(0, LOTE_AGENDA);
       setAchados(lista);
+      achadosRef.current = lista;
       if (data.nivel) setNivel(data.nivel);
       setAvisoMaps(
         lista.length
-          ? `Lote de ${lista.length} ${data.nivel?.label ? `(nível ${data.nivel.nivel}: ${data.nivel.label})` : ""}. Dispara essas, depois busca as próximas 10.`
-          : "Não achei 10 pequenas novas nesta área. Troque a cidade ou o segmento.",
+          ? `Lote de ${lista.length} novas${data.nivel?.label ? ` (nível ${data.nivel.nivel}: ${data.nivel.label})` : ""}. Empresas já vistas ou chamadas ficam de fora.`
+          : "Não achei empresa nova nesta área. Troque a cidade ou o segmento.",
       );
-      setMenu("maps");
+      if (!autoRef.current) setMenu("maps");
+      return lista;
     } catch (error) {
       setErro(error.message || "Não foi possível vasculhar o mapa");
+      return [];
     } finally {
       setBuscando(false);
     }
@@ -153,7 +173,7 @@ export default function AgenciaPage() {
     }
     setSalvando(true);
     setErro("");
-    const conhecidos = leads.map((l) => l.whatsapp);
+    const conhecidos = leadsRef.current.map((l) => l.whatsapp);
     const salvos = [];
     let dup = 0;
     try {
@@ -165,8 +185,10 @@ export default function AgenciaPage() {
         }
         salvos.push({ ...item, id: salvo.id, status: "novo", whatsapp: salvo.whatsapp });
       }
-      setLeads((atual) => [...salvos, ...atual].slice(0, 40));
+      setLeads((atual) => [...salvos, ...atual].slice(0, 300));
+      leadsRef.current = [...salvos, ...leadsRef.current].slice(0, 300);
       setLote(salvos);
+      loteRef.current = salvos;
       setSelecionados(Object.fromEntries(salvos.map((l) => [l.id, true])));
       setProgresso(`Lote pronto: ${salvos.length}${dup ? ` · ${dup} repetidas` : ""}. Agora dispara essas ${salvos.length}.`);
       setMenu("disparo");
@@ -189,13 +211,12 @@ export default function AgenciaPage() {
     );
   }
 
-  async function dispararFila(lista) {
-    if (disparando) return;
+  async function dispararFila(lista, { loteN = 1 } = {}) {
     const origem = Array.isArray(lista) && lista.length
       ? lista
-      : lote.filter((l) => (l.status || "novo") === "novo");
+      : loteRef.current.filter((l) => (l.status || "novo") === "novo");
     const jaChamados = new Set(
-      leads
+      leadsRef.current
         .filter((l) => (l.status || "novo") !== "novo" || l.chamadoEm)
         .map((l) => validarWhatsapp(l.whatsapp))
         .filter(Boolean),
@@ -210,32 +231,19 @@ export default function AgenciaPage() {
       fila.push(lead);
       if (fila.length >= LOTE_AGENDA) break;
     }
-    if (!fila.length) {
-      setErro("Busque um lote de 10 e guarde na fila antes de disparar.");
-      setMenu("maps");
-      return;
-    }
-    if (!waConectado) {
+    if (!fila.length) return { ok: 0, falhas: 0, parou: false };
+    if (!waRef.current) {
       setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 95202-5568.");
       setMenu("conexao");
-      return;
+      return { ok: 0, falhas: 0, parou: true };
     }
-    const hora = horaBrasil();
-    const aviso =
-      hora < 8 || hora >= 19
-        ? "Fora do horário comercial o risco de ban sobe. Disparar mesmo assim este lote de 10?"
-        : `Chamar ${fila.length} deste lote? Cada uma com texto diferente, pausa de 85 a 130s, sem demonstração.`;
-    if (!window.confirm(aviso)) return;
-    pararRef.current = false;
-    setDisparando(true);
-    setErro("");
     let ok = 0;
     let falhas = 0;
     for (let i = 0; i < fila.length; i += 1) {
       if (pararRef.current) break;
       const lead = fila[i];
       const texto = montarAbordagemAgencia(lead, modelo + i);
-      setProgresso(`Lote ${i + 1}/${fila.length}: chamando ${lead.nome}`);
+      setProgresso(`Lote ${loteN}: ${i + 1}/${fila.length} · chamando ${lead.nome}`);
       try {
         const res = await fetch("/api/agencia/disparar", {
           method: "POST",
@@ -244,25 +252,104 @@ export default function AgenciaPage() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Falha no envio");
-        if (data.skipped) {
-          if (lead.id) await atualizarLeadAgencia(lead.id, { status: "chamou", chamadoEm: true });
-          setLeads((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
-          setLote((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
-          continue;
+        const patch = (atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l));
+        if (lead.id) {
+          await atualizarLeadAgencia(lead.id, {
+            status: "chamou",
+            chamadoEm: true,
+            nome: lead.nome,
+            whatsapp: lead.whatsapp,
+            cidade: lead.cidade,
+            osmId: lead.osmId || lead.id,
+          });
         }
-        if (lead.id) await atualizarLeadAgencia(lead.id, { status: "chamou", chamadoEm: true });
-        setLeads((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
-        setLote((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
-        ok += 1;
+        setLeads(patch);
+        setLote(patch);
+        leadsRef.current = patch(leadsRef.current);
+        loteRef.current = patch(loteRef.current);
+        if (!data.skipped) ok += 1;
       } catch (error) {
         falhas += 1;
         setErro(error.message || "Falha no disparo");
       }
       if (i < fila.length - 1 && !pararRef.current) await sleep(delayAgenciaMs());
     }
-    setDisparando(false);
-    setProgresso(`Lote encerrado: ${ok} chamados, ${falhas} falhas. Agora busque as próximas 10.`);
-    setPagina((n) => n + 1);
+    return { ok, falhas, parou: pararRef.current };
+  }
+
+  async function dispararAutomatico(listaInicial) {
+    if (autoRef.current || disparando) return;
+    if (!waRef.current) {
+      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 95202-5568.");
+      setMenu("conexao");
+      return;
+    }
+    const hora = horaBrasil();
+    const aviso =
+      hora < 8 || hora >= 19
+        ? "Fora do horário comercial o risco de ban sobe. Disparar automático mesmo assim (10, depois mais 10, sem repetir empresa)?"
+        : "Disparo automático: chama 10, busca outras 10 novas e segue sozinho. A mesma empresa não entra de novo. Parar cancela.";
+    if (!window.confirm(aviso)) return;
+
+    pararRef.current = false;
+    autoRef.current = true;
+    setDisparando(true);
+    setErro("");
+    let lotes = 0;
+    let totalOk = 0;
+    let totalFalhas = 0;
+
+    try {
+      let fila = Array.isArray(listaInicial) && listaInicial.length
+        ? listaInicial
+        : loteRef.current.filter((l) => (l.status || "novo") === "novo");
+
+      while (!pararRef.current && autoRef.current) {
+        if (!waRef.current) {
+          setErro("WhatsApp desconectou. Disparo automático parado.");
+          break;
+        }
+        if (!fila.length) {
+          setProgresso(
+            lotes
+              ? `Lote ${lotes} encerrado (${totalOk} chamadas). Buscando mais 10 empresas novas…`
+              : "Buscando o primeiro lote de 10 empresas novas…",
+          );
+          const encontradas = await vasculhar();
+          if (pararRef.current) break;
+          if (!encontradas.length) {
+            setProgresso(
+              lotes
+                ? `Automático encerrado: não achei empresa nova. ${totalOk} chamadas em ${lotes} lote(s).`
+                : "Não achei empresa nova para chamar.",
+            );
+            break;
+          }
+          fila = await guardarAchados(encontradas);
+          if (pararRef.current) break;
+          if (!fila.length) {
+            setProgresso(`Automático encerrado: as encontradas já tinham sido chamadas. ${totalOk} envios.`);
+            break;
+          }
+          setMenu("disparo");
+        }
+
+        lotes += 1;
+        const r = await dispararFila(fila, { loteN: lotes });
+        totalOk += r.ok;
+        totalFalhas += r.falhas;
+        fila = [];
+        loteRef.current = [];
+        setLote([]);
+        if (r.parou) break;
+      }
+    } finally {
+      autoRef.current = false;
+      setDisparando(false);
+      if (pararRef.current) {
+        setProgresso(`Parado: ${totalOk} chamadas, ${totalFalhas} falhas, ${lotes} lote(s).`);
+      }
+    }
   }
 
   if (loading || !user) {
@@ -316,15 +403,15 @@ export default function AgenciaPage() {
         {menu === "maps" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
-              <h1>Vasculhar 10 empresas</h1>
+              <h1>Vasculhar 10 empresas novas</h1>
               <p>
                 {nivel
                   ? `Nível ${nivel.nivel} agora: ${nivel.label}. ${nivel.detalhe}${
                       nivel.proximoEm
                         ? ` Sobe sozinho para ${nivel.proximoLabel} em ${nivel.proximoEm} dia${nivel.proximoEm === 1 ? "" : "s"}.`
                         : ""
-                    }`
-                  : "Começa nas pequenas empresas e sobe o porte com o tempo."}
+                    } Quem já foi visto ou chamado não volta na busca.`
+                  : "Começa nas pequenas empresas e sobe o porte com o tempo. Não repete quem já chamou."}
               </p>
             </div>
             <form
@@ -380,9 +467,12 @@ export default function AgenciaPage() {
                   type="button"
                   className="btn-chamar"
                   disabled={salvando}
-                  onClick={() => guardarAchados(achados.filter((e) => validarWhatsapp(e.whatsapp)))}
+                  onClick={async () => {
+                    const salvos = await guardarAchados(achados.filter((e) => validarWhatsapp(e.whatsapp)));
+                    if (salvos.length) dispararAutomatico(salvos);
+                  }}
                 >
-                  {salvando ? "Guardando lote…" : "Guardar estas 10 e ir disparar"}
+                  {salvando ? "Guardando lote…" : "Guardar e disparar automático"}
                 </button>
               </p>
             ) : null}
@@ -393,7 +483,7 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Fila de empresas</h1>
-              <p>{novos.length} ainda não foram abordadas. Marque e mande para Disparar.</p>
+              <p>{novos.length} ainda não chamadas · {chamados.length} já chamadas. Apagar da fila não faz a busca achar de novo.</p>
             </div>
             <form
               className="aff-busca"
@@ -412,7 +502,7 @@ export default function AgenciaPage() {
                   }, leads.map((l) => l.whatsapp));
                   if (salvo.duplicado) throw new Error("Essa empresa já está na fila");
                   setManual({ nome: "", whatsapp: "", cidade: manual.cidade || cidade });
-                  setLeads((atual) => [{ id: salvo.id, nome: salvo.nome, whatsapp: salvo.whatsapp, cidade: manual.cidade || cidade, status: "novo" }, ...atual].slice(0, 40));
+                  setLeads((atual) => [{ id: salvo.id, nome: salvo.nome, whatsapp: salvo.whatsapp, cidade: manual.cidade || cidade, status: "novo" }, ...atual].slice(0, 300));
                 } catch (error) {
                   setErro(error.message || "Não foi possível cadastrar");
                 }
@@ -433,14 +523,15 @@ export default function AgenciaPage() {
               />
               <button type="submit" className="btn-chamar">Cadastrar na fila</button>
             </form>
+            {novos.length ? <p className="aff-resumo">Ainda não chamou</p> : null}
             <ul className="aff-grupos">
-              {leads.map((lead) => (
+              {novos.map((lead) => (
                 <li key={lead.id}>
                   <label>
                     <input
                       type="checkbox"
                       checked={Boolean(selecionados[lead.id])}
-                      disabled={lead.status !== "novo" || !validarWhatsapp(lead.whatsapp)}
+                      disabled={!validarWhatsapp(lead.whatsapp)}
                       onChange={(e) =>
                         setSelecionados((atual) => ({ ...atual, [lead.id]: e.target.checked }))
                       }
@@ -448,11 +539,40 @@ export default function AgenciaPage() {
                     <span>
                       <strong>{lead.nome}</strong>
                       <small>
-                        {lead.cidade} · {formatarWhatsapp(lead.whatsapp)} · {lead.status || "novo"}
+                        {lead.cidade} · {formatarWhatsapp(lead.whatsapp)} · não chamou
                       </small>
                     </span>
                   </label>
-                  <button type="button" onClick={() => excluirLeadAgencia(lead.id).then(() => setLeads((l) => l.filter((x) => x.id !== lead.id)))}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      excluirLeadAgencia(lead.id, lead).then(() => setLeads((l) => l.filter((x) => x.id !== lead.id)))
+                    }
+                  >
+                    Apagar
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {chamados.length ? <p className="aff-resumo">Já chamou</p> : null}
+            <ul className="aff-grupos">
+              {chamados.map((lead) => (
+                <li key={lead.id}>
+                  <label>
+                    <input type="checkbox" disabled checked={false} />
+                    <span>
+                      <strong>{lead.nome}</strong>
+                      <small>
+                        {lead.cidade} · {formatarWhatsapp(lead.whatsapp)} · já chamou
+                      </small>
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      excluirLeadAgencia(lead.id, lead).then(() => setLeads((l) => l.filter((x) => x.id !== lead.id)))
+                    }
+                  >
                     Apagar
                   </button>
                 </li>
@@ -465,8 +585,8 @@ export default function AgenciaPage() {
         {menu === "disparo" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
-              <h1>Chamar o lote</h1>
-              <p>Um balão só, com estrofes separadas. Pausa de 85 a 130s entre empresas.</p>
+              <h1>Chamar automático</h1>
+              <p>Chama 10, busca outras 10 novas e segue. Pausa de 85 a 130s. Não repete empresa.</p>
             </div>
             <div className="aff-ritmos">
               {TEXTOS_AGENCIA.map((item, idx) => (
@@ -489,25 +609,21 @@ export default function AgenciaPage() {
                 type="button"
                 className="btn-chamar"
                 disabled={disparando || !waConectado}
-                onClick={() => dispararFila()}
+                onClick={() => dispararAutomatico()}
               >
-                {disparando ? "Chamando lote…" : "Disparar este lote (10)"}
+                {disparando ? "Chamando automático…" : "Disparar automático (10 e mais 10)"}
               </button>
               {disparando ? (
-                <button type="button" onClick={() => { pararRef.current = true; }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    pararRef.current = true;
+                    autoRef.current = false;
+                  }}
+                >
                   Parar
                 </button>
               ) : null}
-              <button
-                type="button"
-                disabled={buscando || disparando}
-                onClick={() => {
-                  setMenu("maps");
-                  vasculhar();
-                }}
-              >
-                Buscar próximas 10
-              </button>
             </div>
           </section>
         ) : null}

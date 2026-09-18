@@ -357,7 +357,6 @@ export default function PainelPage() {
       return;
     }
 
-    const MAX_POR_VEZ = 10;
     const jaChamados = new Set(
       leads.filter((lead) => leadJaFoiChamado(lead)).map((lead) => chaveWhatsapp(lead.whatsapp)).filter(Boolean),
     );
@@ -379,13 +378,13 @@ export default function PainelPage() {
       return;
     }
 
-    const fila = todosNovos.slice(0, MAX_POR_VEZ);
+    const fila = todosNovos;
     const minSeg = 45;
     const maxSeg = 85;
     if (
       !window.confirm(
-        `Chamar ${fila.length} lead(s) agora` +
-          (todosNovos.length > MAX_POR_VEZ ? ` (de ${todosNovos.length} novos; máx. ${MAX_POR_VEZ} por vez)` : "") +
+        `Chamar ${fila.length} lead(s) automaticamente` +
+          (fila.length > 10 ? `, de 10 em 10, até acabar` : "") +
           `?\n\nIntervalo anti-ban: ~${minSeg}–${maxSeg}s entre cada um.\n` +
           `Para cancelar depois: botão Parar ou F5 na página.`,
       )
