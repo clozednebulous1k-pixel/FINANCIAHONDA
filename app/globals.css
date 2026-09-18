@@ -3067,13 +3067,40 @@ select {
   color: #fff;
 }
 
-.ag-auto-status {
-  flex: 1;
-  min-width: 160px;
-  margin: 0;
-  font-size: 13px;
+.ag-auto-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 88px;
+  margin: 0 0 18px;
+  padding: 18px 16px;
+  border: 0;
+  border-radius: 18px;
+  background: #22c55e;
+  color: #052e16;
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+}
+
+.ag-auto-hero strong {
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.ag-auto-hero span {
+  font-size: 14px;
   font-weight: 600;
-  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.ag-auto-hero.is-on {
+  background: #dc2626;
+  color: #fff;
 }
 
 .qr-page {

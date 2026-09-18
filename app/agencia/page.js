@@ -29,9 +29,9 @@ const SEGMENTOS = [
 ];
 
 const MENUS = [
+  { id: "auto", label: "Automático", icon: "⚡" },
   { id: "maps", label: "Mapa", icon: "🗺️" },
   { id: "empresas", label: "Fila", icon: "🏢" },
-  { id: "disparo", label: "Disparar", icon: "🚀" },
   { id: "conexao", label: "Conexão", icon: "📶" },
 ];
 
@@ -44,7 +44,7 @@ function sleep(ms) {
 export default function AgenciaPage() {
   const router = useRouter();
   const { user, loading, logout, pronto } = useAuth();
-  const [menu, setMenu] = useState("maps");
+  const [menu, setMenu] = useState("auto");
   const [waConectado, setWaConectado] = useState(false);
   const [erro, setErro] = useState("");
   const [cidade, setCidade] = useState("São Paulo");
@@ -199,7 +199,7 @@ export default function AgenciaPage() {
       loteRef.current = salvos;
       setSelecionados(Object.fromEntries(salvos.map((l) => [l.id, true])));
       setProgresso(`Lote pronto: ${salvos.length}${dup ? ` · ${dup} repetidas` : ""}. Agora dispara essas ${salvos.length}.`);
-      setMenu("disparo");
+      setMenu("auto");
       return salvos;
     } catch (error) {
       setErro(error.message || "Não foi possível guardar");
@@ -336,7 +336,7 @@ export default function AgenciaPage() {
         }
 
         lotes += 1;
-        setMenu("disparo");
+        setMenu("auto");
         const r = await dispararFila(fila, { loteN: lotes });
         totalOk += r.ok;
         totalFalhas += r.falhas;
@@ -418,8 +418,8 @@ export default function AgenciaPage() {
                 {item.label}
               </span>
               {item.id === "empresas" ? <em className="crm-nav-count">{leads.length}</em> : null}
-              {item.id === "disparo" && escolhidos.length ? (
-                <em className="crm-nav-badge">{escolhidos.length}</em>
+              {item.id === "auto" && autoLigado ? (
+                <em className="crm-nav-badge">ON</em>
               ) : null}
             </button>
           ))}
@@ -451,6 +451,14 @@ export default function AgenciaPage() {
 
         {menu === "maps" ? (
           <section className="crm-pane">
+            <button
+              type="button"
+              className={`ag-auto-hero ${autoLigado ? "is-on" : ""}`}
+              onClick={toggleAutomatico}
+            >
+              <strong>{autoLigado ? "DESATIVAR AUTOMÁTICO" : "LIGAR AUTOMÁTICO"}</strong>
+              <span>Não precisa buscar na mão. Toque neste botão verde.</span>
+            </button>
             <div className="crm-pane-top">
               <h1>Vasculhar 10 empresas novas</h1>
               <p>
@@ -628,12 +636,29 @@ export default function AgenciaPage() {
           </section>
         ) : null}
 
-        {menu === "disparo" ? (
+        {menu === "auto" ? (
           <section className="crm-pane">
             <div className="crm-pane-top">
-              <h1>Disparo</h1>
-              <p>O botão verde em cima liga o automático: procura e chama até você desativar.</p>
+              <h1>Automático</h1>
+              <p>Este é o botão. Liga e o sistema procura empresas e chama sozinho até você desativar.</p>
             </div>
+            <button
+              type="button"
+              className={`ag-auto-hero ${autoLigado ? "is-on" : ""}`}
+              onClick={toggleAutomatico}
+            >
+              <strong>{autoLigado ? "DESATIVAR AUTOMÁTICO" : "LIGAR AUTOMÁTICO"}</strong>
+              <span>
+                {autoLigado
+                  ? (progresso || "Está ligado. Procurando e chamando. Toque para parar.")
+                  : "Toque aqui. Eu procuro 10, chamo, procuro mais 10 e sigo."}
+              </span>
+            </button>
+            {!waConectado ? (
+              <p className="crm-erro-banner">
+                WhatsApp ainda off. Vá na aba Conexão, leia o QR, depois volte e toque em LIGAR AUTOMÁTICO.
+              </p>
+            ) : null}
             <div className="aff-ritmos">
               {TEXTOS_AGENCIA.map((item, idx) => (
                 <button
@@ -647,18 +672,6 @@ export default function AgenciaPage() {
               ))}
             </div>
             <pre className="aff-preview">{preview}</pre>
-            <p className="aff-resumo">
-              {lote.filter((l) => (l.status || "novo") === "novo").length || escolhidos.length} neste lote
-            </p>
-            <div className="lead-tools">
-              <button
-                type="button"
-                className={`btn-chamar ${autoLigado ? "is-stop" : ""}`}
-                onClick={toggleAutomatico}
-              >
-                {autoLigado ? "Desativar automático" : "Ligar automático"}
-              </button>
-            </div>
           </section>
         ) : null}
 
