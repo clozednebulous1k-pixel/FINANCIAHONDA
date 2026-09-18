@@ -8,6 +8,14 @@ export const metadata = {
   description: "Escolha financiamento, consórcio ou conhecer motos e fale com um consultor Honda.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+  themeColor: "#0b141a",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">

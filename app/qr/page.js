@@ -28,7 +28,7 @@ export default function QrPage() {
   const conectado = Boolean(info?.connected);
 
   return (
-    <main style={{ maxWidth: 480, margin: "40px auto", padding: 20, fontFamily: "system-ui" }}>
+    <main className="qr-page">
       <h1 style={{ marginTop: 0 }}>QR WhatsApp Business</h1>
       <p>Número: <strong>11 94753-9917</strong></p>
       <p>
@@ -45,7 +45,7 @@ export default function QrPage() {
           alt="QR Code"
           width={280}
           height={280}
-          style={{ border: "1px solid #ddd", borderRadius: 12 }}
+          style={{ border: "1px solid #ddd", borderRadius: 12, maxWidth: "100%", height: "auto" }}
         />
       ) : null}
       {conectado ? <p style={{ color: "#168c3d", fontWeight: 700 }}>WhatsApp conectado com sucesso.</p> : null}

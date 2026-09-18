@@ -32,7 +32,7 @@ function iniciais(nome) {
   return `${partes[0][0]}${partes[1][0]}`.toUpperCase();
 }
 
-export default function ChatCrm({ lead, embutido = false, onBack }) {
+export default function ChatCrm({ lead, embutido = false, onBack, onSituacao }) {
   const [mensagens, setMensagens] = useState([]);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -222,6 +222,17 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
           <span>{lead.whatsapp}</span>
         </div>
         <div className="wa-chat-actions">
+          {onSituacao ? (
+            <button
+              type="button"
+              className="wa-btn-sync wa-btn-situacao"
+              onClick={onSituacao}
+              title="Situação do lead"
+            >
+              <span className="wa-btn-full">Situação</span>
+              <span className="wa-btn-short">ℹ</span>
+            </button>
+          ) : null}
           <button
             type="button"
             className="wa-btn-sync"
@@ -229,7 +240,12 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
             disabled={sincronizando || enviando || apagando}
             title="Buscar respostas (só após a 1ª mensagem pelo painel)"
           >
-            {sincronizando ? "…" : "↻ Respostas"}
+            {sincronizando ? "…" : (
+              <>
+                <span className="wa-btn-full">↻ Respostas</span>
+                <span className="wa-btn-short">↻</span>
+              </>
+            )}
           </button>
           <button
             type="button"
@@ -238,7 +254,12 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
             disabled={apagando || enviando || sincronizando}
             title="Apagar conversa no painel"
           >
-            {apagando ? "…" : "Apagar"}
+            {apagando ? "…" : (
+              <>
+                <span className="wa-btn-full">Apagar</span>
+                <span className="wa-btn-short">✕</span>
+              </>
+            )}
           </button>
         </div>
       </header>
@@ -309,6 +330,8 @@ export default function ChatCrm({ lead, embutido = false, onBack }) {
             disabled={enviando}
             rows={Math.min(6, Math.max(1, texto.split("\n").length))}
             autoComplete="off"
+            enterKeyHint="send"
+            autoCapitalize="sentences"
           />
         </div>
         <button type="submit" disabled={enviando || !texto.trim()} aria-label="Enviar">

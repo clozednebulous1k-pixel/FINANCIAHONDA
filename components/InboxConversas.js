@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ChatCrm from "./ChatCrm";
 import SituacaoCliente from "./SituacaoCliente";
 import { STATUS } from "../lib/leads";
@@ -61,6 +61,7 @@ export default function InboxConversas({
   const [mobilePane, setMobilePane] = useState("lista");
   const [menuCtx, setMenuCtx] = useState(null);
   const [apagandoId, setApagandoId] = useState("");
+  const holdRef = useRef({ timer: 0, fired: false, x: 0, y: 0 });
 
   const conversas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -91,10 +92,13 @@ export default function InboxConversas({
     function tecla(e) {
       if (e.key === "Escape") fechar();
     }
-    window.addEventListener("click", fechar);
-    window.addEventListener("scroll", fechar, true);
+    const timer = window.setTimeout(() => {
+      window.addEventListener("click", fechar);
+      window.addEventListener("scroll", fechar, true);
+    }, 120);
     window.addEventListener("keydown", tecla);
     return () => {
+      window.clearTimeout(timer);
       window.removeEventListener("click", fechar);
       window.removeEventListener("scroll", fechar, true);
       window.removeEventListener("keydown", tecla);
@@ -102,22 +106,61 @@ export default function InboxConversas({
   }, [menuCtx]);
 
   function abrir(lead) {
+    if (holdRef.current.fired) {
+      holdRef.current.fired = false;
+      return;
+    }
     setMenuCtx(null);
     setSelecionadoId(lead.id);
     setMobilePane("chat");
   }
 
-  function abrirMenu(event, lead) {
-    event.preventDefault();
-    event.stopPropagation();
+  function posicaoMenu(x, y) {
     const pad = 8;
     const w = 220;
     const h = 88;
-    let x = event.clientX;
-    let y = event.clientY;
-    if (x + w > window.innerWidth - pad) x = window.innerWidth - w - pad;
-    if (y + h > window.innerHeight - pad) y = window.innerHeight - h - pad;
+    let left = x;
+    let top = y;
+    if (left + w > window.innerWidth - pad) left = window.innerWidth - w - pad;
+    if (top + h > window.innerHeight - pad) top = window.innerHeight - h - pad;
+    return { x: Math.max(pad, left), y: Math.max(pad, top) };
+  }
+
+  function abrirMenu(event, lead) {
+    event.preventDefault();
+    event.stopPropagation();
+    const { x, y } = posicaoMenu(event.clientX, event.clientY);
     setMenuCtx({ x, y, lead });
+  }
+
+  function abrirMenuEm(lead, x, y) {
+    const pos = posicaoMenu(x, y);
+    setMenuCtx({ x: pos.x, y: pos.y, lead });
+  }
+
+  function iniciarHold(event, lead) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    holdRef.current.fired = false;
+    holdRef.current.x = event.clientX;
+    holdRef.current.y = event.clientY;
+    const x = event.clientX;
+    const y = event.clientY;
+    clearTimeout(holdRef.current.timer);
+    holdRef.current.timer = window.setTimeout(() => {
+      holdRef.current.fired = true;
+      abrirMenuEm(lead, x, y);
+    }, 480);
+  }
+
+  function moverHold(event) {
+    if (!holdRef.current.timer) return;
+    const dx = event.clientX - holdRef.current.x;
+    const dy = event.clientY - holdRef.current.y;
+    if (dx * dx + dy * dy > 64) soltarHold();
+  }
+
+  function soltarHold() {
+    clearTimeout(holdRef.current.timer);
   }
 
   async function apagarConversaPainel(lead) {
@@ -224,13 +267,25 @@ export default function InboxConversas({
             <p className="wa-muted">Nenhum lead. Cadastre na aba Leads ou importe.</p>
           ) : (
             conversas.map((lead) => (
-              <button
+              <div
                 key={lead.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={`wa-thread ${selecionadoId === lead.id ? "is-active" : ""} ${apagandoId === lead.id ? "is-busy" : ""}`}
                 onClick={() => abrir(lead)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    abrir(lead);
+                  }
+                }}
                 onContextMenu={(e) => abrirMenu(e, lead)}
-                title="Botão direito: apagar conversa do painel"
+                onPointerDown={(e) => iniciarHold(e, lead)}
+                onPointerMove={moverHold}
+                onPointerUp={soltarHold}
+                onPointerCancel={soltarHold}
+                onPointerLeave={soltarHold}
+                title="Toque para abrir · segure ou ⋯ para apagar"
               >
                 <span className="wa-avatar">{iniciais(lead.nome)}</span>
                 <span className="wa-thread-body">
@@ -244,7 +299,22 @@ export default function InboxConversas({
                   </span>
                   <span className="wa-thread-sub">{lead.whatsapp} · {statusLabel(lead.status)}</span>
                 </span>
-              </button>
+                <button
+                  type="button"
+                  className="wa-thread-more"
+                  aria-label={`Opções de ${lead.nome}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    soltarHold();
+                    const box = e.currentTarget.getBoundingClientRect();
+                    abrirMenuEm(lead, box.left, box.bottom);
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  ⋯
+                </button>
+              </div>
             ))
           )}
         </div>
@@ -255,16 +325,8 @@ export default function InboxConversas({
           lead={selecionado}
           embutido
           onBack={selecionado ? () => setMobilePane("lista") : undefined}
+          onSituacao={selecionado ? () => setMobilePane("situacao") : undefined}
         />
-        {selecionado ? (
-          <button
-            type="button"
-            className="wa-open-situacao"
-            onClick={() => setMobilePane("situacao")}
-          >
-            Situação
-          </button>
-        ) : null}
       </div>
 
       <SituacaoCliente

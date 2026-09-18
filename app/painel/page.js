@@ -651,51 +651,51 @@ export default function PainelPage() {
                         <tr key={lead.id} className={editandoId === lead.id ? "is-edit" : ""}>
                           {editandoId === lead.id ? (
                             <>
-                              <td>
+                              <td data-label="Nome">
                                 <div className="cell-pair">
                                   <input className="cell-input" autoFocus maxLength={LIMITES.nome} value={edicao.nome} onChange={(e) => setEdicao({ ...edicao, nome: e.target.value })} onKeyDown={teclaEdicao} placeholder="Nome" />
                                   <input className="cell-input" maxLength={LIMITES.modelo} value={edicao.modelo} onChange={(e) => setEdicao({ ...edicao, modelo: e.target.value })} onKeyDown={teclaEdicao} placeholder="Moto" />
                                 </div>
                               </td>
-                              <td className="nowrap muted">{dataLead(lead.createdAt)}</td>
-                              <td>
+                              <td className="nowrap muted" data-label="Adicionado">{dataLead(lead.createdAt)}</td>
+                              <td data-label="WhatsApp">
                                 <div className="cell-pair">
                                   <input className="cell-input" inputMode="tel" maxLength={LIMITES.whatsapp} value={edicao.whatsapp} onChange={(e) => setEdicao({ ...edicao, whatsapp: e.target.value })} onKeyDown={teclaEdicao} placeholder="WhatsApp" />
                                   <input className="cell-input" maxLength={LIMITES.observacao} value={edicao.observacao} onChange={(e) => setEdicao({ ...edicao, observacao: e.target.value })} onKeyDown={teclaEdicao} placeholder="Obs" />
                                 </div>
                               </td>
-                              <td>
+                              <td data-label="CNH">
                                 <select className="cell-input" value={edicao.cnh} onChange={(e) => setEdicao({ ...edicao, cnh: e.target.value })}>
                                   {CNH_OPCOES.map((opcao) => <option key={opcao}>{opcao}</option>)}
                                 </select>
                               </td>
-                              <td>
+                              <td data-label="Tipo">
                                 <select className="cell-input" value={edicao.tipo} onChange={(e) => setEdicao({ ...edicao, tipo: e.target.value })}>
                                   {TIPOS_LEAD.map((tipo) => <option key={tipo}>{tipo}</option>)}
                                 </select>
                               </td>
-                              <td>
+                              <td data-label="Status">
                                 <select className={`status-select st-${edicao.status || "novo"}`} value={edicao.status || "novo"} onChange={(e) => setEdicao({ ...edicao, status: e.target.value })}>
                                   {STATUS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
                                 </select>
                               </td>
-                              <td className="row-actions">
+                              <td className="row-actions" data-label="Ações">
                                 <button type="button" className="is-save" onClick={salvarEdicao}>Salvar</button>
                                 <button type="button" onClick={() => setEditandoId("")}>Cancelar</button>
                               </td>
                             </>
                           ) : (
                             <>
-                              <td>
+                              <td data-label="Nome">
                                 <strong>{lead.nome}</strong>
                                 {lead.naoLidas ? <span className="badge-msg">{lead.naoLidas}</span> : null}
                                 {lead.modelo ? <span className="muted"> {lead.modelo}</span> : null}
                               </td>
-                              <td className="nowrap muted">{dataLead(lead.createdAt)}</td>
-                              <td className="nowrap">{lead.whatsapp}</td>
-                              <td>{lead.cnh || "—"}</td>
-                              <td>{tipoCurto(lead.tipo)}</td>
-                              <td>
+                              <td className="nowrap muted" data-label="Adicionado">{dataLead(lead.createdAt)}</td>
+                              <td className="nowrap" data-label="WhatsApp">{lead.whatsapp}</td>
+                              <td data-label="CNH">{lead.cnh || "—"}</td>
+                              <td data-label="Tipo">{tipoCurto(lead.tipo)}</td>
+                              <td data-label="Status">
                                 <select
                                   className={`status-select st-${lead.status || "novo"}`}
                                   value={lead.status || "novo"}
@@ -707,7 +707,7 @@ export default function PainelPage() {
                                   ))}
                                 </select>
                               </td>
-                              <td className="row-actions">
+                              <td className="row-actions" data-label="Ações">
                                 <button type="button" className="is-chat" onClick={() => { setMenu("conversas"); }}>
                                   Conversas
                                 </button>
