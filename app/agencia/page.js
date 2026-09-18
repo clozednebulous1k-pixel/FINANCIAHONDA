@@ -160,8 +160,8 @@ export default function AgenciaPage() {
       if (data.nivel) setNivel(data.nivel);
       setAvisoMaps(
         lista.length
-          ? `Lote de ${lista.length} novas${data.nivel?.label ? ` (nível ${data.nivel.nivel}: ${data.nivel.label})` : ""}. Empresas já vistas ou chamadas ficam de fora.`
-          : "Não achei empresa nova nesta área. Troque a cidade ou o segmento.",
+          ? `Lote de ${lista.length} novas${data.nivel?.label ? ` (nível ${data.nivel.nivel}: ${data.nivel.label})` : ""}. Quem já foi chamado ou está na fila fica de fora.`
+          : "Não achei empresa nova nesta área agora. O automático tenta outro bairro em seguida.",
       );
       if (!autoRef.current) setMenu("maps");
       return lista;
@@ -467,7 +467,7 @@ export default function AgenciaPage() {
                       nivel.proximoEm
                         ? ` Sobe sozinho para ${nivel.proximoLabel} em ${nivel.proximoEm} dia${nivel.proximoEm === 1 ? "" : "s"}.`
                         : ""
-                    } Quem já foi visto ou chamado não volta na busca.`
+                    } Quem já foi chamado ou está na fila não volta na busca.`
                   : "Começa nas pequenas empresas e sobe o porte com o tempo. Não repete quem já chamou."}
               </p>
             </div>

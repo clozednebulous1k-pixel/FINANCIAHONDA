@@ -4,7 +4,6 @@ import { textoSeguro } from "../../../../lib/security";
 import {
   adminPronto,
   listarExclusoesAgencia,
-  registrarEmpresasVistas,
 } from "../../../../lib/firebaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -43,9 +42,6 @@ export async function POST(request) {
       excluirNomes,
       excluirOsm,
     });
-    if (adminPronto() && resultado.empresas?.length) {
-      await registrarEmpresasVistas(resultado.empresas);
-    }
     return NextResponse.json({ ok: true, ...resultado });
   } catch (error) {
     return NextResponse.json(
