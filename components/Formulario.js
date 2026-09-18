@@ -160,16 +160,20 @@ export default function Formulario() {
         setErroDados("Muitas tentativas. Espere alguns minutos.");
         return;
       }
-      await criarLead({
-        nome,
-        whatsapp,
-        tipo,
-        modelo: respostas.Modelo || "",
-        observacao: observacaoDasRespostas(respostas),
-        origem: "formulario",
-        cnh: CNH_OPCOES.includes(respostas.CNH) ? respostas.CNH : "Não",
-        respostas,
-      });
+      try {
+        await criarLead({
+          nome,
+          whatsapp,
+          tipo,
+          modelo: respostas.Modelo || "",
+          observacao: observacaoDasRespostas(respostas),
+          origem: "formulario",
+          cnh: CNH_OPCOES.includes(respostas.CNH) ? respostas.CNH : "Não",
+          respostas,
+        });
+      } catch (error) {
+        if (error.code !== "duplicado") throw error;
+      }
       window.localStorage.setItem("honda-cliente-nome", nome);
       window.localStorage.setItem("honda-cliente-whatsapp", formatarWhatsapp(whatsapp));
       setDadosSalvos(true);

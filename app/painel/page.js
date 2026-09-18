@@ -9,7 +9,7 @@ import WhatsappStatus from "../../components/WhatsappStatus";
 import { delayAntiBanMs, montarAbordagem } from "../../lib/abordagens";
 import { atualizarLead, atualizarStatus, criarLead, excluirLead, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
 import { salvarMensagem, limparDuplicadasEmLeads, leadJaFoiChamado, jaEnviouMensagem } from "../../lib/mensagens";
-import { CNH_OPCOES, LIMITES, TIPOS_LEAD, crmDoEmail } from "../../lib/security";
+import { chaveWhatsapp, CNH_OPCOES, LIMITES, TIPOS_LEAD, crmDoEmail } from "../../lib/security";
 
 const VAZIO = {
   nome: "",
@@ -178,10 +178,19 @@ export default function PainelPage() {
   const pararDisparoRef = useRef(false);
   const disparoAtivoRef = useRef(false);
 
-  const leadsNovos = useMemo(
-    () => leads.filter((lead) => !leadJaFoiChamado(lead)),
-    [leads],
-  );
+  const leadsNovos = useMemo(() => {
+    const chamados = new Set(
+      leads.filter((lead) => leadJaFoiChamado(lead)).map((lead) => chaveWhatsapp(lead.whatsapp)).filter(Boolean),
+    );
+    const vistos = new Set();
+    return leads.filter((lead) => {
+      if (leadJaFoiChamado(lead)) return false;
+      const fone = chaveWhatsapp(lead.whatsapp);
+      if (!fone || chamados.has(fone) || vistos.has(fone)) return false;
+      vistos.add(fone);
+      return true;
+    });
+  }, [leads]);
 
   useEffect(() => {
     // Qualquer refresh/carregamento cancela disparo antigo
@@ -267,7 +276,11 @@ export default function PainelPage() {
       setFiltro("todos");
       setMenu("leads");
     } catch (error) {
-      setErro("Não foi possível salvar o lead. Confira as regras do Firebase.");
+      setErro(
+        error.code === "duplicado"
+          ? "Este WhatsApp já está cadastrado. Não criei outro lead."
+          : "Não foi possível salvar o lead. Confira as regras do Firebase.",
+      );
     } finally {
       setSalvando(false);
     }
@@ -345,7 +358,18 @@ export default function PainelPage() {
     }
 
     const MAX_POR_VEZ = 10;
-    const todosNovos = leads.filter((lead) => !leadJaFoiChamado(lead));
+    const jaChamados = new Set(
+      leads.filter((lead) => leadJaFoiChamado(lead)).map((lead) => chaveWhatsapp(lead.whatsapp)).filter(Boolean),
+    );
+    const vistos = new Set();
+    const todosNovos = [];
+    for (const lead of leads) {
+      if (leadJaFoiChamado(lead)) continue;
+      const fone = chaveWhatsapp(lead.whatsapp);
+      if (!fone || vistos.has(fone) || jaChamados.has(fone)) continue;
+      vistos.add(fone);
+      todosNovos.push(lead);
+    }
     if (!todosNovos.length) {
       setErro("Não há leads novos sem mensagem enviada.");
       return;
@@ -383,12 +407,6 @@ export default function PainelPage() {
     let pulados = 0;
     const numerosEnviados = new Set();
 
-    function chaveFone(valor) {
-      let digits = String(valor || "").replace(/\D/g, "");
-      if (digits.startsWith("55") && digits.length >= 12) digits = digits.slice(2);
-      return digits;
-    }
-
     for (let i = 0; i < fila.length; i += 1) {
       if (pararDisparoRef.current || window.localStorage.getItem("honda-parar-disparo") === "1") {
         setProgressoDisparo(`Parado: ${ok} enviados, ${falhas} falhas. Restaram ${fila.length - i}.`);
@@ -396,12 +414,12 @@ export default function PainelPage() {
       }
 
       const lead = fila[i];
-      const fone = chaveFone(lead.whatsapp);
+      const fone = chaveWhatsapp(lead.whatsapp);
       setProgressoDisparo(`Checando ${i + 1}/${fila.length}: ${lead.nome}`);
       try {
         const mesmoNumeroJaFoi = Boolean(fone) && (
           numerosEnviados.has(fone) ||
-          leads.some((outro) => outro.id !== lead.id && chaveFone(outro.whatsapp) === fone && leadJaFoiChamado(outro))
+          leads.some((outro) => outro.id !== lead.id && chaveWhatsapp(outro.whatsapp) === fone && leadJaFoiChamado(outro))
         );
         if (mesmoNumeroJaFoi || leadJaFoiChamado(lead) || (await jaEnviouMensagem(lead.id))) {
           if ((lead.status || "novo") === "novo") {
@@ -442,9 +460,19 @@ export default function PainelPage() {
           setProgressoDisparo(`Pulando ${lead.nome}: já foi chamado.`);
           continue;
         }
-        await salvarMensagem(lead.id, { texto, fromMe: true });
+        if (!data.salvo) {
+          await salvarMensagem(lead.id, { texto, fromMe: true });
+        }
         await atualizarStatus(lead.id, "aguardando_resposta");
-        if (fone) numerosEnviados.add(fone);
+        if (fone) {
+          numerosEnviados.add(fone);
+          const irmaos = leads.filter(
+            (outro) => outro.id !== lead.id && chaveWhatsapp(outro.whatsapp) === fone && (outro.status || "novo") === "novo",
+          );
+          for (const irmao of irmaos) {
+            await atualizarStatus(irmao.id, "aguardando_resposta");
+          }
+        }
         ok += 1;
       } catch (error) {
         falhas += 1;

@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { enviarTexto, evolutionConfigurado } from "../../../../lib/evolution";
 import { telefoneE164 } from "../../../../lib/abordagens";
-import { textoMensagem } from "../../../../lib/security";
+import { textoMensagem, validarId } from "../../../../lib/security";
+import {
+  adminPronto,
+  confirmarDisparo,
+  reservarDisparo,
+  soltarDisparo,
+} from "../../../../lib/firebaseAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +28,37 @@ export async function POST(request) {
 
   const numero = telefoneE164(body?.whatsapp || body?.numero);
   const texto = textoMensagem(body?.texto, 4000);
+  const leadId = validarId(body?.leadId || "");
   if (!numero) return NextResponse.json({ error: "WhatsApp inválido" }, { status: 400 });
   if (!texto) return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
+
+  let reservado = false;
+  if (adminPronto()) {
+    const reserva = await reservarDisparo({
+      leadId,
+      numero,
+      conta: "agencia",
+      colecao: "agencia_leads",
+      statusOk: "chamou",
+    });
+    if (reserva.skipped) {
+      return NextResponse.json(
+        { ok: true, skipped: true, motivo: reserva.motivo || "já enviado" },
+        { status: 200 },
+      );
+    }
+    if (!reserva.ok) {
+      return NextResponse.json({ error: reserva.error || "Não foi possível reservar o envio" }, { status: 503 });
+    }
+    reservado = true;
+  }
 
   const agora = Date.now();
   const ultimo = recentes.get(numero) || 0;
   if (agora - ultimo < COOLDOWN_MS) {
+    if (reservado) {
+      await soltarDisparo({ leadId, numero, conta: "agencia", colecao: "agencia_leads" });
+    }
     const espera = Math.ceil((COOLDOWN_MS - (agora - ultimo)) / 1000);
     return NextResponse.json(
       { error: `Aguarde ${espera}s antes de mandar de novo para este número.` },
@@ -35,14 +66,35 @@ export async function POST(request) {
     );
   }
 
+  recentes.set(numero, agora);
+
+  let data;
   try {
-    const data = await enviarTexto(numero, texto, "agencia");
-    recentes.set(numero, agora);
-    return NextResponse.json({ ok: true, numero, data });
+    data = await enviarTexto(numero, texto, "agencia");
   } catch (error) {
+    recentes.delete(numero);
+    if (reservado) {
+      await soltarDisparo({ leadId, numero, conta: "agencia", colecao: "agencia_leads" });
+    }
     return NextResponse.json(
       { error: error.message || "Falha ao enviar" },
       { status: error.status || 500 },
     );
   }
+
+  try {
+    if (reservado) {
+      await confirmarDisparo({
+        leadId,
+        numero,
+        conta: "agencia",
+        colecao: "agencia_leads",
+        statusOk: "chamou",
+      });
+    }
+  } catch {
+    // WhatsApp já saiu — não solta a trava
+  }
+
+  return NextResponse.json({ ok: true, numero, data, skipped: false });
 }

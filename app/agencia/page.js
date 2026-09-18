@@ -194,9 +194,22 @@ export default function AgenciaPage() {
     const origem = Array.isArray(lista) && lista.length
       ? lista
       : lote.filter((l) => (l.status || "novo") === "novo");
-    const fila = (origem.length ? origem : escolhidos)
-      .filter((l) => validarWhatsapp(l.whatsapp))
-      .slice(0, LOTE_AGENDA);
+    const jaChamados = new Set(
+      leads
+        .filter((l) => (l.status || "novo") !== "novo" || l.chamadoEm)
+        .map((l) => validarWhatsapp(l.whatsapp))
+        .filter(Boolean),
+    );
+    const vistos = new Set();
+    const fila = [];
+    for (const lead of (origem.length ? origem : escolhidos)) {
+      const fone = validarWhatsapp(lead.whatsapp);
+      if (!fone || vistos.has(fone) || jaChamados.has(fone)) continue;
+      if ((lead.status || "novo") !== "novo") continue;
+      vistos.add(fone);
+      fila.push(lead);
+      if (fila.length >= LOTE_AGENDA) break;
+    }
     if (!fila.length) {
       setErro("Busque um lote de 10 e guarde na fila antes de disparar.");
       setMenu("maps");
@@ -231,6 +244,12 @@ export default function AgenciaPage() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Falha no envio");
+        if (data.skipped) {
+          if (lead.id) await atualizarLeadAgencia(lead.id, { status: "chamou", chamadoEm: true });
+          setLeads((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
+          setLote((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
+          continue;
+        }
         if (lead.id) await atualizarLeadAgencia(lead.id, { status: "chamou", chamadoEm: true });
         setLeads((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));
         setLote((atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l)));

@@ -47,7 +47,8 @@ service cloud.firestore {
         && (!d.keys().hasAny(['ultimaMensagemEm']) || d.ultimaMensagemEm is timestamp)
         && (!d.keys().hasAny(['naoLidas']) || (d.naoLidas is int && d.naoLidas >= 0 && d.naoLidas <= 999))
         && (!d.keys().hasAny(['chamadoEm']) || d.chamadoEm is timestamp)
-        && (!d.keys().hasAny(['conversaDesde']) || d.conversaDesde is timestamp);
+        && (!d.keys().hasAny(['conversaDesde']) || d.conversaDesde is timestamp)
+        && (!d.keys().hasAny(['disparoReservadoEm']) || d.disparoReservadoEm is timestamp);
     }
 
     match /leads/{leadId} {
@@ -93,6 +94,10 @@ service cloud.firestore {
 
     match /agencia_leads/{id} {
       allow read, write: if afiliado();
+    }
+
+    match /disparo_numeros/{id} {
+      allow read, write: if false;
     }
   }
 }
