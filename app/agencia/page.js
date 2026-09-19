@@ -176,10 +176,11 @@ export default function AgenciaPage() {
       setAchados(lista);
       achadosRef.current = lista;
       if (data.nivel) setNivel(data.nivel);
+      const origem = data.fonte === "google" ? "Google Maps" : "mapa";
       setAvisoMaps(
         lista.length
-          ? `Lote de ${lista.length} com WhatsApp confirmado${data.candidatosMapa ? ` (${data.candidatosMapa} no mapa)` : ""}. Já pode disparar.`
-          : "Achei celular no mapa, mas nenhum passou no WhatsApp agora. Tentando outra área…",
+          ? `Lote de ${lista.length} com celular/WhatsApp no ${origem}${data.candidatosMapa ? ` (${data.candidatosMapa} achados)` : ""}. Já pode disparar.`
+          : `Achei no ${origem}, mas nenhum celular passou agora. Tentando outra área…`,
       );
       if (!autoRef.current) setMenu("maps");
       return lista;

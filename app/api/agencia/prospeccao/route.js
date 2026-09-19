@@ -70,6 +70,7 @@ export async function POST(request) {
       cidade: bruto.cidade,
       segmento: bruto.segmento,
       nivel: bruto.nivel,
+      fonte: bruto.fonte || "osm",
       empresas: lote,
       total: lote.length,
       comWhatsapp: lote.length,
