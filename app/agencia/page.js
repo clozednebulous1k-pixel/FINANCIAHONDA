@@ -348,7 +348,7 @@ export default function AgenciaPage() {
             .slice(0, LOTE_AGENDA);
         }
         if (!fila.length) {
-          setProgresso("Procurando empresas com WhatsApp no mapa…");
+          setProgresso("Procurando PME com WhatsApp no mapa…");
           const encontradas = await vasculhar();
           if (!autoRef.current || pararRef.current) break;
           if (!encontradas.length) {
