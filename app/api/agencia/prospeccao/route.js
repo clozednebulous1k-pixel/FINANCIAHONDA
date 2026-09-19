@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { vasculharEmpresas, SEGMENTOS, nivelProspeccao } from "../../../../lib/prospeccao";
-import { filtrarEmpresasComWhatsapp, evolutionConfigurado } from "../../../../lib/evolution";
+import { filtrarEmpresasComWhatsapp, evolutionRemota } from "../../../../lib/evolution";
 import { textoSeguro } from "../../../../lib/security";
 import {
   adminPronto,
@@ -30,16 +30,20 @@ export async function POST(request) {
 
   try {
     if (adminPronto()) {
-      const extra = await listarExclusoesAgencia();
-      excluir = [...excluir, ...extra.fones];
-      excluirNomes = extra.nomes;
-      excluirOsm = extra.osm;
+      try {
+        const extra = await listarExclusoesAgencia();
+        excluir = [...excluir, ...extra.fones];
+        excluirNomes = extra.nomes;
+        excluirOsm = extra.osm;
+      } catch {
+        // segue sem exclusões extras
+      }
     }
-    // Pega vários candidatos no mapa e só devolve quem tem WhatsApp de verdade
+
     const bruto = await vasculharEmpresas({
       cidade,
       segmento,
-      limite: 40,
+      limite: 20,
       excluir,
       excluirNomes,
       excluirOsm,
@@ -47,18 +51,25 @@ export async function POST(request) {
 
     let empresas = Array.isArray(bruto.empresas) ? bruto.empresas : [];
     let filtrado = false;
-    if (evolutionConfigurado() && empresas.length) {
-      empresas = await filtrarEmpresasComWhatsapp(empresas, "agencia");
-      filtrado = true;
+
+    // Só checa Zap na Evolution se a URL for pública (não localhost na Vercel)
+    if (evolutionRemota() && empresas.length) {
+      try {
+        empresas = await filtrarEmpresasComWhatsapp(empresas.slice(0, 20), "agencia");
+        filtrado = true;
+      } catch {
+        empresas = empresas.filter((e) => e.whatsappOk).slice(0, 10);
+      }
     } else {
-      // Sem Evolution: não libera lote (evita disparar pra quem não tem Zap)
-      empresas = [];
+      empresas = empresas.filter((e) => e.whatsappOk).slice(0, 10);
     }
 
     const lote = empresas.slice(0, 10);
     return NextResponse.json({
       ok: true,
-      ...bruto,
+      cidade: bruto.cidade,
+      segmento: bruto.segmento,
+      nivel: bruto.nivel,
       empresas: lote,
       total: lote.length,
       comWhatsapp: lote.length,
@@ -66,9 +77,7 @@ export async function POST(request) {
       filtradoWhatsapp: filtrado,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error.message || "Não foi possível vasculhar o mapa" },
-      { status: 502 },
-    );
+    const msg = String(error?.message || "Não foi possível vasculhar o mapa").slice(0, 240);
+    return NextResponse.json({ error: msg, ok: false, empresas: [] }, { status: 502 });
   }
 }

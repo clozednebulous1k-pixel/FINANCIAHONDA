@@ -43,6 +43,22 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Lê resposta da API sem quebrar se vier texto (timeout Vercel etc.). */
+async function lerJson(res) {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    const trecho = text.replace(/\s+/g, " ").trim().slice(0, 160);
+    throw new Error(
+      /an error occurred/i.test(trecho)
+        ? "Servidor sobrecarregado (timeout). Tenta de novo em alguns segundos."
+        : trecho || `Resposta inválida (HTTP ${res.status})`,
+    );
+  }
+}
+
 export default function AgenciaPage() {
   const router = useRouter();
   const { user, loading, logout, pronto } = useAuth();
@@ -99,8 +115,8 @@ export default function AgenciaPage() {
 
   useEffect(() => {
     fetch("/api/agencia/prospeccao")
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await lerJson(res);
         if (data?.nivel) setNivel(data.nivel);
       })
       .catch(() => {});
@@ -154,7 +170,7 @@ export default function AgenciaPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cidade: cidadeRef.current, segmento: segmentoRef.current, excluir }),
       });
-      const data = await res.json();
+      const data = await lerJson(res);
       if (!res.ok) throw new Error(data.error || "Falha na busca");
       const lista = (Array.isArray(data.empresas) ? data.empresas : []).slice(0, LOTE_AGENDA);
       setAchados(lista);
@@ -260,7 +276,7 @@ export default function AgenciaPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ whatsapp: lead.whatsapp, texto, leadId: lead.id }),
         });
-        const data = await res.json();
+        const data = await lerJson(res);
         if (!res.ok) throw new Error(data.error || "Falha no envio");
         if (data.skipped) {
           pulados += 1;
@@ -335,7 +351,7 @@ export default function AgenciaPage() {
       while (autoRef.current && !pararRef.current) {
         try {
           const resWa = await fetch("/api/whatsapp/status?conta=agencia", { cache: "no-store" });
-          const dataWa = await resWa.json();
+          const dataWa = await lerJson(resWa);
           waRef.current = Boolean(dataWa.connected);
           setWaConectado(waRef.current);
         } catch {
