@@ -231,23 +231,24 @@ export default function AgenciaPage() {
     const jaChamados = new Set(
       leadsRef.current
         .filter((l) => (l.status || "novo") !== "novo" || l.chamadoEm)
-        .map((l) => validarWhatsapp(l.whatsapp))
+        .map((l) => celularWhatsapp(l.whatsapp) || validarWhatsapp(l.whatsapp))
         .filter(Boolean),
     );
     const vistos = new Set();
     const fila = [];
     for (const lead of (origem.length ? origem : escolhidos)) {
-      const fone = celularWhatsapp(lead.whatsapp) || validarWhatsapp(lead.whatsapp);
-      if (!celularWhatsapp(fone) || vistos.has(fone) || jaChamados.has(fone)) continue;
+      const fone = celularWhatsapp(lead.whatsapp);
+      if (!fone || vistos.has(fone) || jaChamados.has(fone)) continue;
       if ((lead.status || "novo") !== "novo") continue;
       vistos.add(fone);
-      fila.push(lead);
+      fila.push({ ...lead, whatsapp: fone });
       if (fila.length >= LOTE_AGENDA) break;
     }
-    if (!fila.length) return { ok: 0, falhas: 0, parou: false };
-    if (!waRef.current) return { ok: 0, falhas: 0, parou: false, semWhatsapp: true };
+    if (!fila.length) return { ok: 0, falhas: 0, pulados: 0, vazia: true, parou: false };
+    if (!waRef.current) return { ok: 0, falhas: 0, pulados: 0, vazia: false, parou: false, semWhatsapp: true };
     let ok = 0;
     let falhas = 0;
+    let pulados = 0;
     for (let i = 0; i < fila.length; i += 1) {
       if (pararRef.current || !autoRef.current) break;
       const lead = fila[i];
@@ -262,6 +263,7 @@ export default function AgenciaPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Falha no envio");
         if (data.skipped) {
+          pulados += 1;
           const patchSkip = (atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l));
           if (lead.id) {
             await atualizarLeadAgencia(lead.id, {
@@ -279,7 +281,7 @@ export default function AgenciaPage() {
           loteRef.current = patchSkip(loteRef.current);
           setProgresso(`Lote ${loteN}: ${lead.nome} sem Zap — pulando.`);
           if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
-            await sleep(400);
+            await sleep(300);
           }
           continue;
         }
@@ -308,12 +310,17 @@ export default function AgenciaPage() {
         }
         continue;
       }
-      // Intervalo anti-ban só depois de envio real (primeiro sai na hora)
       if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
         await esperar(delayAgenciaMs(), `Lote ${loteN}: ${ok} no Zap. Próxima em`);
       }
     }
-    return { ok, falhas, parou: pararRef.current || !autoRef.current };
+    return {
+      ok,
+      falhas,
+      pulados,
+      vazia: false,
+      parou: pararRef.current || !autoRef.current,
+    };
   }
 
   async function rodarAutomatico() {
@@ -341,10 +348,13 @@ export default function AgenciaPage() {
           continue;
         }
 
-        let fila = loteRef.current.filter((l) => (l.status || "novo") === "novo" && validarWhatsapp(l.whatsapp));
+        // Só celular com 9º dígito — fixo/inválido não entra
+        let fila = loteRef.current.filter(
+          (l) => (l.status || "novo") === "novo" && celularWhatsapp(l.whatsapp),
+        );
         if (!fila.length) {
           fila = leadsRef.current
-            .filter((l) => (l.status || "novo") === "novo" && validarWhatsapp(l.whatsapp))
+            .filter((l) => (l.status || "novo") === "novo" && celularWhatsapp(l.whatsapp))
             .slice(0, LOTE_AGENDA);
         }
         if (!fila.length) {
@@ -352,14 +362,14 @@ export default function AgenciaPage() {
           const encontradas = await vasculhar();
           if (!autoRef.current || pararRef.current) break;
           if (!encontradas.length) {
-            const okEspera = await esperar(25000, "Não achei empresa nova agora. Procurando de novo em");
+            const okEspera = await esperar(12000, "Sem Zap novo agora. Procurando de novo em");
             if (!okEspera) break;
             continue;
           }
           fila = await guardarAchados(encontradas);
           if (!autoRef.current || pararRef.current) break;
           if (!fila.length) {
-            const okEspera = await esperar(8000, "Essas já estavam na fila. Procurando outras em");
+            const okEspera = await esperar(4000, "Essas já estavam na fila. Procurando outras em");
             if (!okEspera) break;
             continue;
           }
@@ -378,12 +388,18 @@ export default function AgenciaPage() {
           if (!okEspera) break;
           continue;
         }
-        if (!r.ok && !r.falhas) {
-          const okEspera = await esperar(8000, "Nada para chamar neste lote. Procurando outras em");
+        if (!r.ok) {
+          // Lote vazio ou só pulados — busca rápido o próximo com Zap
+          setProgresso(
+            r.pulados
+              ? `${r.pulados} sem Zap neste lote. Buscando outras…`
+              : "Nada pra disparar. Buscando PME com Zap…",
+          );
+          const okEspera = await esperar(2500, "Próxima busca em");
           if (!okEspera) break;
           continue;
         }
-        setProgresso(`Lote ${lotes} ok: ${totalOk} chamadas. Procurando as próximas 10…`);
+        setProgresso(`Lote ${lotes} ok: ${totalOk} chamadas. Procurando as próximas…`);
       }
     } finally {
       rodandoRef.current = false;
