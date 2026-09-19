@@ -12,7 +12,27 @@ import {
   listarLeadsAgencia,
   salvarLeadAgencia,
 } from "../../lib/agencia";
+import { LISTA_CLIENTES, fatiaListaClientes } from "../../lib/listaClientes";
 import { celularWhatsapp, emailPermitido, formatarWhatsapp, loginDoCrm, validarWhatsapp } from "../../lib/security";
+
+const CURSOR_LISTA_KEY = "agencia_lista_cursor";
+
+function lerCursorLista() {
+  try {
+    const n = Number(localStorage.getItem(CURSOR_LISTA_KEY) || 0);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function gravarCursorLista(n) {
+  try {
+    localStorage.setItem(CURSOR_LISTA_KEY, String(Math.max(0, Number(n) || 0)));
+  } catch {
+    // sem storage
+  }
+}
 
 const SEGMENTOS = [
   { id: "todos", label: "Todos (com WhatsApp)" },
@@ -80,6 +100,7 @@ export default function AgenciaPage() {
   const [lote, setLote] = useState([]);
   const [nivel, setNivel] = useState(null);
   const [autoLigado, setAutoLigado] = useState(false);
+  const [cursorLista, setCursorLista] = useState(0);
   const pararRef = useRef(false);
   const autoRef = useRef(false);
   const rodandoRef = useRef(false);
@@ -104,6 +125,8 @@ export default function AgenciaPage() {
     () => montarAbordagemAgencia(escolhidos[0] || achados[0] || { nome: "sua empresa", cidade }, modelo),
     [escolhidos, achados, cidade, modelo],
   );
+  const listaTotal = LISTA_CLIENTES.length;
+  const listaRestam = Math.max(0, listaTotal - cursorLista);
 
   useEffect(() => { waRef.current = waConectado; }, [waConectado]);
   useEffect(() => { loteRef.current = lote; }, [lote]);
@@ -114,6 +137,7 @@ export default function AgenciaPage() {
   useEffect(() => { modeloRef.current = modelo; }, [modelo]);
 
   useEffect(() => {
+    setCursorLista(lerCursorLista());
     fetch("/api/agencia/prospeccao")
       .then(async (res) => {
         const data = await lerJson(res);
@@ -200,6 +224,29 @@ export default function AgenciaPage() {
     } finally {
       setBuscando(false);
     }
+  }
+
+  function puxarDaLista() {
+    const excluir = [
+      ...leadsRef.current.map((l) => l.whatsapp),
+      ...achadosRef.current.map((l) => l.whatsapp),
+      ...loteRef.current.map((l) => l.whatsapp),
+    ];
+    const fatia = fatiaListaClientes({
+      excluir,
+      cursor: lerCursorLista(),
+      limite: LOTE_AGENDA,
+    });
+    gravarCursorLista(fatia.cursor);
+    setCursorLista(fatia.cursor);
+    if (fatia.empresas.length) {
+      setAchados(fatia.empresas);
+      achadosRef.current = fatia.empresas;
+      setAvisoMaps(
+        `Lista própria: ${fatia.empresas.length} agora · ${fatia.cursor}/${fatia.total} já lidas · ${fatia.restantes} restam.`,
+      );
+    }
+    return fatia.empresas;
   }
 
   async function guardarAchados(lista) {
@@ -391,8 +438,19 @@ export default function AgenciaPage() {
             .slice(0, LOTE_AGENDA);
         }
         if (!fila.length) {
-          setProgresso("Procurando PME com WhatsApp no mapa…");
-          const encontradas = await vasculhar();
+          setProgresso(
+            lerCursorLista() < LISTA_CLIENTES.length
+              ? `Puxando da sua lista (${Math.max(0, LISTA_CLIENTES.length - lerCursorLista())} ainda na fila)…`
+              : "Lista própria acabou. Procurando PME no mapa…",
+          );
+          let encontradas = puxarDaLista();
+          if (!encontradas.length && lerCursorLista() < LISTA_CLIENTES.length) {
+            encontradas = puxarDaLista();
+          }
+          if (!encontradas.length) {
+            setProgresso("Procurando PME com WhatsApp no mapa…");
+            encontradas = await vasculhar();
+          }
           if (!autoRef.current || pararRef.current) break;
           if (!encontradas.length) {
             const okEspera = await esperar(12000, "Sem Zap novo agora. Procurando de novo em");
@@ -457,7 +515,11 @@ export default function AgenciaPage() {
     autoRef.current = true;
     setAutoLigado(true);
     setErro("");
-    setProgresso("Automático ligado. Procurando e chamando de 10 em 10 até você desativar.");
+    setProgresso(
+      listaRestam
+        ? `Automático ligado. Vou rodar sua lista (${listaRestam} restantes) de 10 em 10.`
+        : "Automático ligado. Lista própria já rodou. Sigo no mapa de 10 em 10.",
+    );
     rodarAutomatico();
   }
 
@@ -521,8 +583,8 @@ export default function AgenciaPage() {
           </button>
           <p className="ag-auto-status">
             {autoLigado
-              ? (progresso || "Ligado: procurando e chamando de 10 em 10. Toque em Desativar para parar.")
-              : "Desligado. Liga e eu procuro 10, chamo, procuro mais 10 e sigo até você desativar."}
+              ? (progresso || "Ligado: rodando a lista e chamando de 10 em 10. Toque em Desativar para parar.")
+              : `Desligado. ${listaRestam} da sua lista ainda não rodaram. Liga e eu chamo de 10 em 10.`}
           </p>
         </div>
         {erro ? <p className="crm-erro-banner">{erro}</p> : null}
@@ -616,8 +678,28 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Fila de empresas</h1>
-              <p>{novos.length} ainda não chamadas · {chamados.length} já chamadas. Apagar da fila não faz a busca achar de novo.</p>
+              <p>
+                {novos.length} ainda não chamadas · {chamados.length} já chamadas.
+                {" "}Lista própria: {cursorLista}/{listaTotal} lidas · {listaRestam} restam. Só nome e telefone.
+              </p>
             </div>
+            <p>
+              <button
+                type="button"
+                className="btn-chamar"
+                disabled={salvando || !listaRestam}
+                onClick={async () => {
+                  const encontradas = puxarDaLista();
+                  if (!encontradas.length) {
+                    setErro("Lista própria acabou ou esses números já estão na fila.");
+                    return;
+                  }
+                  await guardarAchados(encontradas);
+                }}
+              >
+                {salvando ? "Guardando…" : listaRestam ? `Carregar 10 da lista (${listaRestam} restam)` : "Lista própria acabou"}
+              </button>
+            </p>
             <form
               className="aff-busca"
               onSubmit={async (e) => {
@@ -719,7 +801,10 @@ export default function AgenciaPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Automático</h1>
-              <p>Este é o botão. Liga e o sistema procura empresas e chama sozinho até você desativar.</p>
+              <p>
+                Liga e o sistema roda a sua lista primeiro ({listaRestam} restam de {listaTotal}),
+                de 10 em 10, com a abordagem nova. Quando a lista acabar, segue no mapa.
+              </p>
             </div>
             <button
               type="button"
@@ -730,7 +815,7 @@ export default function AgenciaPage() {
               <span>
                 {autoLigado
                   ? (progresso || "Está ligado. Procurando e chamando. Toque para parar.")
-                  : "Toque aqui. Eu procuro 10, chamo, procuro mais 10 e sigo."}
+                  : `Toque aqui. Eu puxo 10 da lista, chamo e sigo. ${listaRestam} ainda na fila.`}
               </span>
             </button>
             {!waConectado ? (
