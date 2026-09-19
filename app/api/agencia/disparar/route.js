@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { enviarTexto, evolutionConfigurado } from "../../../../lib/evolution";
+import { enviarTexto, evolutionConfigurado, numeroTemWhatsapp } from "../../../../lib/evolution";
 import { telefoneE164 } from "../../../../lib/abordagens";
 import { textoMensagem, validarId } from "../../../../lib/security";
 import {
@@ -13,6 +13,22 @@ export const dynamic = "force-dynamic";
 
 const recentes = new Map();
 const COOLDOWN_MS = 85 * 1000;
+
+async function marcarSemWhatsapp(leadId, numero) {
+  if (adminPronto()) {
+    await confirmarDisparo({
+      leadId,
+      numero,
+      conta: "agencia",
+      colecao: "agencia_leads",
+      statusOk: "chamou",
+    }).catch(() => {});
+  }
+  return NextResponse.json(
+    { ok: true, skipped: true, motivo: "sem WhatsApp" },
+    { status: 200 },
+  );
+}
 
 export async function POST(request) {
   if (!evolutionConfigurado()) {
@@ -37,11 +53,30 @@ export async function POST(request) {
   }
   if (!texto) return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
 
+  // Só dispara se o número realmente tem WhatsApp
+  let destino = numero;
+  try {
+    const check = await numeroTemWhatsapp(numero, "agencia");
+    if (!check.exists) {
+      return marcarSemWhatsapp(leadId, numero);
+    }
+    if (check.numero) destino = check.numero;
+  } catch (error) {
+    const semWa =
+      error.status === 400 ||
+      /não está no WhatsApp|bad request|exists:\s*false|not.*whatsapp/i.test(String(error.message || ""));
+    if (semWa) return marcarSemWhatsapp(leadId, numero);
+    return NextResponse.json(
+      { error: error.message || "Falha ao verificar WhatsApp" },
+      { status: error.status || 500 },
+    );
+  }
+
   let reservado = false;
   if (adminPronto()) {
     const reserva = await reservarDisparo({
       leadId,
-      numero,
+      numero: destino,
       conta: "agencia",
       colecao: "agencia_leads",
       statusOk: "chamou",
@@ -59,10 +94,10 @@ export async function POST(request) {
   }
 
   const agora = Date.now();
-  const ultimo = recentes.get(numero) || 0;
+  const ultimo = recentes.get(destino) || 0;
   if (agora - ultimo < COOLDOWN_MS) {
     if (reservado) {
-      await soltarDisparo({ leadId, numero, conta: "agencia", colecao: "agencia_leads" });
+      await soltarDisparo({ leadId, numero: destino, conta: "agencia", colecao: "agencia_leads" });
     }
     const espera = Math.ceil((COOLDOWN_MS - (agora - ultimo)) / 1000);
     return NextResponse.json(
@@ -71,33 +106,19 @@ export async function POST(request) {
     );
   }
 
-  recentes.set(numero, agora);
+  recentes.set(destino, agora);
 
   let data;
   try {
-    data = await enviarTexto(numero, texto, "agencia");
+    data = await enviarTexto(destino, texto, "agencia");
   } catch (error) {
-    recentes.delete(numero);
+    recentes.delete(destino);
     const semWa =
       error.status === 400 ||
       /não está no WhatsApp|bad request|exists:\s*false|not.*whatsapp/i.test(String(error.message || ""));
-    if (semWa) {
-      if (reservado) {
-        await confirmarDisparo({
-          leadId,
-          numero,
-          conta: "agencia",
-          colecao: "agencia_leads",
-          statusOk: "chamou",
-        }).catch(() => {});
-      }
-      return NextResponse.json(
-        { ok: true, skipped: true, motivo: "sem WhatsApp" },
-        { status: 200 },
-      );
-    }
+    if (semWa) return marcarSemWhatsapp(leadId, destino);
     if (reservado) {
-      await soltarDisparo({ leadId, numero, conta: "agencia", colecao: "agencia_leads" });
+      await soltarDisparo({ leadId, numero: destino, conta: "agencia", colecao: "agencia_leads" });
     }
     return NextResponse.json(
       { error: error.message || "Falha ao enviar" },
@@ -109,7 +130,7 @@ export async function POST(request) {
     if (reservado) {
       await confirmarDisparo({
         leadId,
-        numero,
+        numero: destino,
         conta: "agencia",
         colecao: "agencia_leads",
         statusOk: "chamou",
@@ -119,5 +140,5 @@ export async function POST(request) {
     // WhatsApp já saiu — não solta a trava
   }
 
-  return NextResponse.json({ ok: true, numero, data, skipped: false });
+  return NextResponse.json({ ok: true, numero: destino, data, skipped: false });
 }

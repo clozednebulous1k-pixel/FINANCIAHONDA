@@ -275,7 +275,11 @@ export default function AgenciaPage() {
           setLote(patchSkip);
           leadsRef.current = patchSkip(leadsRef.current);
           loteRef.current = patchSkip(loteRef.current);
-          setProgresso(`Lote ${loteN}: ${lead.nome} sem WhatsApp. Pulando.`);
+          setProgresso(`Lote ${loteN}: ${lead.nome} sem Zap — pulando.`);
+          // Sem WhatsApp: pula rápido, não gasta o intervalo anti-ban
+          if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
+            await sleep(800);
+          }
           continue;
         }
         const patch = (atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l));
@@ -293,13 +297,14 @@ export default function AgenciaPage() {
         setLote(patch);
         leadsRef.current = patch(leadsRef.current);
         loteRef.current = patch(loteRef.current);
-        if (!data.skipped) ok += 1;
+        ok += 1;
       } catch (error) {
         falhas += 1;
         setErro(error.message || "Falha no disparo");
       }
+      // Intervalo longo só depois de envio real (ou falha de rede)
       if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
-        await esperar(delayAgenciaMs(), `Lote ${loteN}: ${ok} enviados. Próxima em`);
+        await esperar(delayAgenciaMs(), `Lote ${loteN}: ${ok} no Zap. Próxima em`);
       }
     }
     return { ok, falhas, parou: pararRef.current || !autoRef.current };
