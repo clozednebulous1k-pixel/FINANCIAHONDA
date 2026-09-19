@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { enviarTexto, evolutionConfigurado, numeroTemWhatsapp } from "../../../../lib/evolution";
+import { enviarTexto, evolutionConfigurado } from "../../../../lib/evolution";
 import { telefoneE164 } from "../../../../lib/abordagens";
 import { textoMensagem, validarId } from "../../../../lib/security";
 import {
@@ -53,18 +53,8 @@ export async function POST(request) {
   }
   if (!texto) return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
 
-  // Só dispara se a Evolution confirmar WhatsApp
-  let destino = numero;
-  try {
-    const check = await numeroTemWhatsapp(numero, "agencia");
-    if (check.ok && check.exists === false) {
-      return marcarSemWhatsapp(leadId, numero);
-    }
-    // Se a checagem falhou (ok=false), ainda tenta — o lote já veio filtrado do mapa
-    if (check.numero) destino = check.numero;
-  } catch {
-    // segue pro envio; se não tiver Zap, o send Textorna 400 e pula
-  }
+  // Envia direto — sem pré-check (evita abort/timeout). Sem Zap = 400 e pula.
+  const destino = numero;
 
   let reservado = false;
   if (adminPronto()) {
@@ -107,17 +97,18 @@ export async function POST(request) {
     data = await enviarTexto(destino, texto, "agencia");
   } catch (error) {
     recentes.delete(destino);
+    const msg = String(error.message || "");
     const semWa =
       error.status === 400 ||
-      /não está no WhatsApp|bad request|exists:\s*false|not.*whatsapp/i.test(String(error.message || ""));
+      /não está no WhatsApp|bad request|exists:\s*false|not.*whatsapp/i.test(msg);
     if (semWa) return marcarSemWhatsapp(leadId, destino);
     if (reservado) {
       await soltarDisparo({ leadId, numero: destino, conta: "agencia", colecao: "agencia_leads" });
     }
-    return NextResponse.json(
-      { error: error.message || "Falha ao enviar" },
-      { status: error.status || 500 },
-    );
+    const amigavel = /aborted|abort|demorou|timeout/i.test(msg)
+      ? "WhatsApp demorou. O automático tenta de novo."
+      : msg || "Falha ao enviar";
+    return NextResponse.json({ error: amigavel }, { status: error.status || 500 });
   }
 
   try {
