@@ -52,8 +52,8 @@ async function lerJson(res) {
   } catch {
     const trecho = text.replace(/\s+/g, " ").trim().slice(0, 160);
     throw new Error(
-      /an error occurred/i.test(trecho)
-        ? "Servidor sobrecarregado (timeout). Tenta de novo em alguns segundos."
+      /aborted|abort|an error occurred|timeout|demorou/i.test(trecho)
+        ? "Servidor demorou demais. Espera 5s e tenta de novo."
         : trecho || `Resposta inválida (HTTP ${res.status})`,
     );
   }
@@ -184,7 +184,17 @@ export default function AgenciaPage() {
       if (!autoRef.current) setMenu("maps");
       return lista;
     } catch (error) {
-      setErro(error.message || "Não foi possível vasculhar o mapa");
+      const msg = String(error.message || "");
+      // Automático: não mostra erro feio — só avisa e deixa o loop tentar de novo
+      if (!autoRef.current) {
+        setErro(
+          /aborted|abort/i.test(msg)
+            ? "Busca demorou. Clica de novo em Vasculhar."
+            : msg || "Não foi possível vasculhar o mapa",
+        );
+      } else {
+        setProgresso("Mapa demorou. Tentando outra área em seguida…");
+      }
       return [];
     } finally {
       setBuscando(false);
@@ -320,9 +330,15 @@ export default function AgenciaPage() {
         setProgresso(`Lote ${loteN}: ${ok} disparo(s) · ${lead.nome}`);
       } catch (error) {
         falhas += 1;
-        setErro(error.message || "Falha no disparo");
+        const msg = String(error.message || "");
+        // Abort/timeout: não trava o automático — conta e segue
+        if (!/aborted|abort|demorou|timeout/i.test(msg)) {
+          setErro(msg || "Falha no disparo");
+        } else {
+          setProgresso(`Lote ${loteN}: demora no Zap, tentando próxima…`);
+        }
         if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
-          await sleep(1200);
+          await sleep(1500);
         }
         continue;
       }
