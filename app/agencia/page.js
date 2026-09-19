@@ -15,7 +15,7 @@ import {
 import { celularWhatsapp, emailPermitido, formatarWhatsapp, loginDoCrm, validarWhatsapp } from "../../lib/security";
 
 const SEGMENTOS = [
-  { id: "foco", label: "SP · arquitetura / resto / roupas" },
+  { id: "todos", label: "Todos (com WhatsApp)" },
   { id: "arquitetura", label: "Arquitetura" },
   { id: "restaurante", label: "Restaurante / food" },
   { id: "roupas", label: "Loja de roupas" },
@@ -50,7 +50,7 @@ export default function AgenciaPage() {
   const [waConectado, setWaConectado] = useState(false);
   const [erro, setErro] = useState("");
   const [cidade, setCidade] = useState("São Paulo");
-  const [segmento, setSegmento] = useState("foco");
+  const [segmento, setSegmento] = useState("todos");
   const [buscando, setBuscando] = useState(false);
   const [achados, setAchados] = useState([]);
   const [avisoMaps, setAvisoMaps] = useState("");
@@ -162,8 +162,8 @@ export default function AgenciaPage() {
       if (data.nivel) setNivel(data.nivel);
       setAvisoMaps(
         lista.length
-          ? `Lote de ${lista.length} em SP (arquitetura / restaurante / roupas)${data.nivel?.label ? ` · ${data.nivel.label}` : ""}. Prioridade pra quem precisa de ajuda.`
-          : "Não achei arquitetura, restaurante ou loja de roupas com Zap nesta área. Tentando outro bairro de SP…",
+          ? `Lote de ${lista.length} com WhatsApp confirmado${data.candidatosMapa ? ` (${data.candidatosMapa} no mapa)` : ""}. Já pode disparar.`
+          : "Achei celular no mapa, mas nenhum passou no WhatsApp agora. Tentando outra área…",
       );
       if (!autoRef.current) setMenu("maps");
       return lista;
@@ -278,9 +278,8 @@ export default function AgenciaPage() {
           leadsRef.current = patchSkip(leadsRef.current);
           loteRef.current = patchSkip(loteRef.current);
           setProgresso(`Lote ${loteN}: ${lead.nome} sem Zap — pulando.`);
-          // Sem WhatsApp: pula rápido, não gasta o intervalo anti-ban
           if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
-            await sleep(800);
+            await sleep(400);
           }
           continue;
         }
@@ -300,11 +299,16 @@ export default function AgenciaPage() {
         leadsRef.current = patch(leadsRef.current);
         loteRef.current = patch(loteRef.current);
         ok += 1;
+        setProgresso(`Lote ${loteN}: ${ok} disparo(s) · ${lead.nome}`);
       } catch (error) {
         falhas += 1;
         setErro(error.message || "Falha no disparo");
+        if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
+          await sleep(1200);
+        }
+        continue;
       }
-      // Intervalo longo só depois de envio real (ou falha de rede)
+      // Intervalo anti-ban só depois de envio real (primeiro sai na hora)
       if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
         await esperar(delayAgenciaMs(), `Lote ${loteN}: ${ok} no Zap. Próxima em`);
       }
@@ -344,7 +348,7 @@ export default function AgenciaPage() {
             .slice(0, LOTE_AGENDA);
         }
         if (!fila.length) {
-          setProgresso("Procurando em SP: arquitetura, restaurante e lojas de roupa…");
+          setProgresso("Procurando empresas com WhatsApp no mapa…");
           const encontradas = await vasculhar();
           if (!autoRef.current || pararRef.current) break;
           if (!encontradas.length) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { vasculharEmpresas, SEGMENTOS, nivelProspeccao } from "../../../../lib/prospeccao";
+import { filtrarEmpresasComWhatsapp, evolutionConfigurado } from "../../../../lib/evolution";
 import { textoSeguro } from "../../../../lib/security";
 import {
   adminPronto,
@@ -22,7 +23,7 @@ export async function POST(request) {
   }
 
   const cidade = textoSeguro(body?.cidade, 80) || "São Paulo";
-  const segmento = SEGMENTOS.some((s) => s.id === body?.segmento) ? body.segmento : "foco";
+  const segmento = SEGMENTOS.some((s) => s.id === body?.segmento) ? body.segmento : "todos";
   let excluir = Array.isArray(body?.excluir) ? body.excluir.slice(0, 200) : [];
   let excluirNomes = [];
   let excluirOsm = [];
@@ -34,15 +35,36 @@ export async function POST(request) {
       excluirNomes = extra.nomes;
       excluirOsm = extra.osm;
     }
-    const resultado = await vasculharEmpresas({
-      cidade: cidade || "São Paulo",
+    // Pega vários candidatos no mapa e só devolve quem tem WhatsApp de verdade
+    const bruto = await vasculharEmpresas({
+      cidade,
       segmento,
-      limite: 10,
+      limite: 40,
       excluir,
       excluirNomes,
       excluirOsm,
     });
-    return NextResponse.json({ ok: true, ...resultado });
+
+    let empresas = Array.isArray(bruto.empresas) ? bruto.empresas : [];
+    let filtrado = false;
+    if (evolutionConfigurado() && empresas.length) {
+      empresas = await filtrarEmpresasComWhatsapp(empresas, "agencia");
+      filtrado = true;
+    } else {
+      // Sem Evolution: não libera lote (evita disparar pra quem não tem Zap)
+      empresas = [];
+    }
+
+    const lote = empresas.slice(0, 10);
+    return NextResponse.json({
+      ok: true,
+      ...bruto,
+      empresas: lote,
+      total: lote.length,
+      comWhatsapp: lote.length,
+      candidatosMapa: bruto.total,
+      filtradoWhatsapp: filtrado,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error.message || "Não foi possível vasculhar o mapa" },

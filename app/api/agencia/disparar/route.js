@@ -53,17 +53,17 @@ export async function POST(request) {
   }
   if (!texto) return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
 
-  // Pré-checagem: só pula se a API confirmar exists=false.
-  // Se a checagem falhar, tenta enviar mesmo (já veio com Zap do mapa).
+  // Só dispara se a Evolution confirmar WhatsApp
   let destino = numero;
   try {
     const check = await numeroTemWhatsapp(numero, "agencia");
     if (check.ok && check.exists === false) {
       return marcarSemWhatsapp(leadId, numero);
     }
+    // Se a checagem falhou (ok=false), ainda tenta — o lote já veio filtrado do mapa
     if (check.numero) destino = check.numero;
   } catch {
-    // API de check fora / Bad Request genérico — não marca como sem Zap
+    // segue pro envio; se não tiver Zap, o send Textorna 400 e pula
   }
 
   let reservado = false;
