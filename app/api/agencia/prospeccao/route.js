@@ -22,7 +22,7 @@ export async function POST(request) {
   }
 
   const cidade = textoSeguro(body?.cidade, 80) || "São Paulo";
-  const segmento = SEGMENTOS.some((s) => s.id === body?.segmento) ? body.segmento : "todos";
+  const segmento = SEGMENTOS.some((s) => s.id === body?.segmento) ? body.segmento : "foco";
   let excluir = Array.isArray(body?.excluir) ? body.excluir.slice(0, 200) : [];
   let excluirNomes = [];
   let excluirOsm = [];
@@ -35,7 +35,7 @@ export async function POST(request) {
       excluirOsm = extra.osm;
     }
     const resultado = await vasculharEmpresas({
-      cidade,
+      cidade: cidade || "São Paulo",
       segmento,
       limite: 10,
       excluir,

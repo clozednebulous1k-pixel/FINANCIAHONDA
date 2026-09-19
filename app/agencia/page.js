@@ -15,14 +15,16 @@ import {
 import { celularWhatsapp, emailPermitido, formatarWhatsapp, loginDoCrm, validarWhatsapp } from "../../lib/security";
 
 const SEGMENTOS = [
-  { id: "todos", label: "Todos" },
+  { id: "foco", label: "SP · arquitetura / resto / roupas" },
+  { id: "arquitetura", label: "Arquitetura" },
+  { id: "restaurante", label: "Restaurante / food" },
+  { id: "roupas", label: "Loja de roupas" },
   { id: "salao", label: "Salão / estética" },
   { id: "oficina", label: "Oficina / auto" },
   { id: "clinica", label: "Clínica / saúde" },
   { id: "dentista", label: "Dentista" },
   { id: "imobiliaria", label: "Imobiliária" },
   { id: "advocacia", label: "Advocacia / contábil" },
-  { id: "restaurante", label: "Restaurante / food" },
   { id: "pet", label: "Pet shop" },
   { id: "padaria", label: "Padaria / mercado" },
   { id: "loja", label: "Loja / comércio" },
@@ -48,7 +50,7 @@ export default function AgenciaPage() {
   const [waConectado, setWaConectado] = useState(false);
   const [erro, setErro] = useState("");
   const [cidade, setCidade] = useState("São Paulo");
-  const [segmento, setSegmento] = useState("todos");
+  const [segmento, setSegmento] = useState("foco");
   const [buscando, setBuscando] = useState(false);
   const [achados, setAchados] = useState([]);
   const [avisoMaps, setAvisoMaps] = useState("");
@@ -160,8 +162,8 @@ export default function AgenciaPage() {
       if (data.nivel) setNivel(data.nivel);
       setAvisoMaps(
         lista.length
-          ? `Lote de ${lista.length} com WhatsApp no mapa${data.nivel?.label ? ` (nível ${data.nivel.nivel}: ${data.nivel.label})` : ""}. Só entra quem tem Zap/tag wa.me.`
-          : "Não achei empresa com WhatsApp no mapa nesta área. O automático tenta outro bairro.",
+          ? `Lote de ${lista.length} em SP (arquitetura / restaurante / roupas)${data.nivel?.label ? ` · ${data.nivel.label}` : ""}. Prioridade pra quem precisa de ajuda.`
+          : "Não achei arquitetura, restaurante ou loja de roupas com Zap nesta área. Tentando outro bairro de SP…",
       );
       if (!autoRef.current) setMenu("maps");
       return lista;
@@ -342,7 +344,7 @@ export default function AgenciaPage() {
             .slice(0, LOTE_AGENDA);
         }
         if (!fila.length) {
-          setProgresso("Procurando 10 empresas novas no mapa…");
+          setProgresso("Procurando em SP: arquitetura, restaurante e lojas de roupa…");
           const encontradas = await vasculhar();
           if (!autoRef.current || pararRef.current) break;
           if (!encontradas.length) {
