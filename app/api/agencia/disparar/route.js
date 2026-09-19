@@ -53,23 +53,17 @@ export async function POST(request) {
   }
   if (!texto) return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
 
-  // Só dispara se o número realmente tem WhatsApp
+  // Pré-checagem: só pula se a API confirmar exists=false.
+  // Se a checagem falhar, tenta enviar mesmo (já veio com Zap do mapa).
   let destino = numero;
   try {
     const check = await numeroTemWhatsapp(numero, "agencia");
-    if (!check.exists) {
+    if (check.ok && check.exists === false) {
       return marcarSemWhatsapp(leadId, numero);
     }
     if (check.numero) destino = check.numero;
-  } catch (error) {
-    const semWa =
-      error.status === 400 ||
-      /não está no WhatsApp|bad request|exists:\s*false|not.*whatsapp/i.test(String(error.message || ""));
-    if (semWa) return marcarSemWhatsapp(leadId, numero);
-    return NextResponse.json(
-      { error: error.message || "Falha ao verificar WhatsApp" },
-      { status: error.status || 500 },
-    );
+  } catch {
+    // API de check fora / Bad Request genérico — não marca como sem Zap
   }
 
   let reservado = false;

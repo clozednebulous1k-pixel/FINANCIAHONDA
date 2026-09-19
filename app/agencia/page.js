@@ -160,8 +160,8 @@ export default function AgenciaPage() {
       if (data.nivel) setNivel(data.nivel);
       setAvisoMaps(
         lista.length
-          ? `Lote de ${lista.length} novas${data.nivel?.label ? ` (nível ${data.nivel.nivel}: ${data.nivel.label})` : ""}. Quem já foi chamado ou está na fila fica de fora.`
-          : "Não achei empresa nova nesta área agora. O automático tenta outro bairro em seguida.",
+          ? `Lote de ${lista.length} com WhatsApp no mapa${data.nivel?.label ? ` (nível ${data.nivel.nivel}: ${data.nivel.label})` : ""}. Só entra quem tem Zap/tag wa.me.`
+          : "Não achei empresa com WhatsApp no mapa nesta área. O automático tenta outro bairro.",
       );
       if (!autoRef.current) setMenu("maps");
       return lista;
