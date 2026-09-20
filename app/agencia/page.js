@@ -823,18 +823,9 @@ export default function AgenciaPage() {
                 WhatsApp ainda off. Vá na aba Conexão, leia o QR, depois volte e toque em LIGAR AUTOMÁTICO.
               </p>
             ) : null}
-            <div className="aff-ritmos">
-              {TEXTOS_AGENCIA.map((item, idx) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={modelo === idx ? "is-on" : ""}
-                  onClick={() => setModelo(idx)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            <p className="aff-aviso">
+              {TEXTOS_AGENCIA.length} variações da mesma abordagem. Cada número recebe um texto diferente, pra não repetir e reduzir ban.
+            </p>
             <pre className="aff-preview">{preview}</pre>
           </section>
         ) : null}
