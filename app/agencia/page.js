@@ -824,7 +824,7 @@ export default function AgenciaPage() {
               </p>
             ) : null}
             <p className="aff-aviso">
-              {TEXTOS_AGENCIA.length} variações da mesma abordagem. Cada número recebe um texto diferente, pra não repetir e reduzir ban.
+              {TEXTOS_AGENCIA.length} variações da mesma abordagem. O cumprimento muda sozinho (bom dia, boa tarde ou boa noite) e cada número recebe um texto diferente.
             </p>
             <pre className="aff-preview">{preview}</pre>
           </section>
