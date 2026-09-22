@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
 import WhatsappStatus from "../../components/WhatsappStatus";
-import { delayAgenciaMs, delayEntreBaloesMs, LOTE_AGENDA, montarAbordagemAgencia, montarBaloesAgencia, TEXTOS_AGENCIA } from "../../lib/abordagensAgencia";
+import { delayAgenciaMs, LOTE_AGENDA, montarAbordagemAgencia, TEXTOS_AGENCIA } from "../../lib/abordagensAgencia";
 import {
   atualizarLeadAgencia,
   excluirLeadAgencia,
@@ -326,34 +326,16 @@ export default function AgenciaPage() {
     for (let i = 0; i < fila.length; i += 1) {
       if (pararRef.current || !autoRef.current) break;
       const lead = fila[i];
+      const texto = montarAbordagemAgencia(lead, modeloRef.current + i);
       setProgresso(`Lote ${loteN}: ${i + 1}/${fila.length} · chamando ${lead.nome}`);
       try {
-        const baloes = montarBaloesAgencia(lead, modeloRef.current + i);
-        if (!baloes.length) throw new Error("Texto vazio");
-        let data = {};
-        let enviouAlgum = false;
-        for (let b = 0; b < baloes.length; b += 1) {
-          if (pararRef.current || !autoRef.current) break;
-          setProgresso(`Lote ${loteN}: ${lead.nome} · balão ${b + 1}/${baloes.length}`);
-          const res = await fetch("/api/agencia/disparar", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              whatsapp: lead.whatsapp,
-              texto: baloes[b],
-              leadId: lead.id,
-              sequencia: b,
-              total: baloes.length,
-            }),
-          });
-          data = await lerJson(res);
-          if (!res.ok) throw new Error(data.error || "Falha no envio");
-          if (data.skipped) break;
-          enviouAlgum = true;
-          if (b < baloes.length - 1 && autoRef.current && !pararRef.current) {
-            await esperar(delayEntreBaloesMs(), `Lote ${loteN}: ${lead.nome} · próximo balão em`);
-          }
-        }
+        const res = await fetch("/api/agencia/disparar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ whatsapp: lead.whatsapp, texto, leadId: lead.id }),
+        });
+        const data = await lerJson(res);
+        if (!res.ok) throw new Error(data.error || "Falha no envio");
         if (data.skipped) {
           pulados += 1;
           const patchSkip = (atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l));
@@ -377,7 +359,6 @@ export default function AgenciaPage() {
           }
           continue;
         }
-        if (!enviouAlgum) break;
         const patch = (atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l));
         if (lead.id) {
           await atualizarLeadAgencia(lead.id, {
@@ -410,7 +391,7 @@ export default function AgenciaPage() {
         continue;
       }
       if (i < fila.length - 1 && autoRef.current && !pararRef.current) {
-        await esperar(delayAgenciaMs(), `Lote ${loteN}: ${ok} no Zap. Próxima em`);
+        await esperar(delayAgenciaMs(), `Lote ${loteN}: ${ok} no Zap. Próxima conversa em`);
       }
     }
     return {
@@ -843,7 +824,7 @@ export default function AgenciaPage() {
               </p>
             ) : null}
             <p className="aff-aviso">
-              {TEXTOS_AGENCIA.length} variações da mesma abordagem. Saem 5 balões no chat, com pausa temporária de ~8–15s entre cada um para o WhatsApp não restringir. O cumprimento muda sozinho (bom dia, boa tarde ou boa noite) e cada número recebe um texto diferente.
+              {TEXTOS_AGENCIA.length} variações da mesma abordagem. Uma mensagem por conversa, com pausa temporária de ~85–130s entre cada uma para o WhatsApp não restringir. O cumprimento muda sozinho (bom dia, boa tarde ou boa noite) e cada número recebe um texto diferente.
             </p>
             <pre className="aff-preview">{preview}</pre>
           </section>
