@@ -45,6 +45,8 @@ export async function POST(request) {
   const numero = telefoneE164(body?.whatsapp || body?.numero);
   const texto = textoMensagem(body?.texto, 4000);
   const leadId = validarId(body?.leadId || "");
+  const sequencia = Math.max(0, Math.min(4, Number(body?.sequencia) || 0));
+  const continuar = sequencia > 0;
   if (!numero) {
     return NextResponse.json(
       { ok: true, skipped: true, motivo: "telefone fixo ou inválido" },
@@ -57,7 +59,7 @@ export async function POST(request) {
   const destino = numero;
 
   let reservado = false;
-  if (adminPronto()) {
+  if (!continuar && adminPronto()) {
     const reserva = await reservarDisparo({
       leadId,
       numero: destino,
@@ -79,7 +81,8 @@ export async function POST(request) {
 
   const agora = Date.now();
   const ultimo = recentes.get(destino) || 0;
-  if (agora - ultimo < COOLDOWN_MS) {
+  // Balões seguintes do mesmo chat não entram no cooldown de 85s.
+  if (!continuar && agora - ultimo < COOLDOWN_MS) {
     if (reservado) {
       await soltarDisparo({ leadId, numero: destino, conta: "agencia", colecao: "agencia_leads" });
     }
