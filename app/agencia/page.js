@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../../components/AuthProvider";
 import WhatsappStatus from "../../components/WhatsappStatus";
-import { delayAgenciaMs, LOTE_AGENDA, montarAbordagemAgencia, montarBalaoSiteAgencia, TEXTOS_AGENCIA } from "../../lib/abordagensAgencia";
+import { delayAgenciaMs, LOTE_AGENDA, montarAbordagemAgencia, TEXTOS_AGENCIA } from "../../lib/abordagensAgencia";
 import {
   atualizarLeadAgencia,
   excluirLeadAgencia,
@@ -122,12 +122,7 @@ export default function AgenciaPage() {
     [leads],
   );
   const preview = useMemo(
-    () => {
-      const alvo = escolhidos[0] || achados[0] || { nome: "sua empresa", cidade };
-      const corpo = montarAbordagemAgencia(alvo, modelo);
-      const site = montarBalaoSiteAgencia(alvo, modelo);
-      return site ? `${corpo}\n\n${site}` : corpo;
-    },
+    () => montarAbordagemAgencia(escolhidos[0] || achados[0] || { nome: "sua empresa", cidade }, modelo),
     [escolhidos, achados, cidade, modelo],
   );
   const listaTotal = LISTA_CLIENTES.length;
@@ -332,7 +327,6 @@ export default function AgenciaPage() {
       if (pararRef.current || !autoRef.current) break;
       const lead = fila[i];
       const texto = montarAbordagemAgencia(lead, modeloRef.current + i);
-      const balaoSite = montarBalaoSiteAgencia(lead, modeloRef.current + i);
       setProgresso(`Lote ${loteN}: ${i + 1}/${fila.length} · chamando ${lead.nome}`);
       try {
         const res = await fetch("/api/agencia/disparar", {
@@ -364,25 +358,6 @@ export default function AgenciaPage() {
             await sleep(300);
           }
           continue;
-        }
-        if (balaoSite && autoRef.current && !pararRef.current) {
-          setProgresso(`Lote ${loteN}: ${lead.nome} · enviando site`);
-          await sleep(2500);
-          try {
-            const resSite = await fetch("/api/agencia/disparar", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                whatsapp: lead.whatsapp,
-                texto: balaoSite,
-                leadId: lead.id,
-                sequencia: 1,
-              }),
-            });
-            await lerJson(resSite);
-          } catch {
-            // texto principal já saiu
-          }
         }
         const patch = (atual) => atual.map((l) => (l.id === lead.id ? { ...l, status: "chamou" } : l));
         if (lead.id) {
@@ -849,7 +824,7 @@ export default function AgenciaPage() {
               </p>
             ) : null}
             <p className="aff-aviso">
-              {TEXTOS_AGENCIA.length} variações da mesma abordagem. Uma conversa por vez: o texto principal e, no final, um balão com o site. Pausa temporária de ~85–130s entre conversas. O cumprimento muda sozinho (bom dia, boa tarde ou boa noite) e cada número recebe um texto diferente.
+              {TEXTOS_AGENCIA.length} variações da mesma abordagem. Um balão só, com o site no texto. Pausa temporária de ~85–130s entre conversas. O cumprimento muda sozinho (bom dia, boa tarde ou boa noite) e cada número recebe um texto diferente.
             </p>
             <pre className="aff-preview">{preview}</pre>
           </section>
