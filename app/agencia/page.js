@@ -566,6 +566,7 @@ export default function AgenciaPage() {
           ))}
         </nav>
         <div className="crm-nav-foot">
+          <Link href="/curriculo" style={{ fontWeight: "bold", color: "#38bdf8" }}>Currículo</Link>
           <Link href="/painel">Honda</Link>
           <Link href="/afiliados">Afiliados</Link>
           <button type="button" onClick={() => logout()}>Sair</button>

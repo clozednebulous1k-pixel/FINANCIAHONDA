@@ -435,6 +435,7 @@ export default function AfiliadosPage() {
           ))}
         </nav>
         <div className="crm-nav-foot">
+          <a href="/curriculo" style={{ fontWeight: "bold", color: "#38bdf8" }}>Currículo</a>
           <a href="/painel">CRM Honda</a>
           <a href="/agencia">CRM Agência</a>
           <button type="button" onClick={() => logout()}>Sair</button>

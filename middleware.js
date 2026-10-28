@@ -69,7 +69,8 @@ export function middleware(request) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/painel") ||
     pathname.startsWith("/afiliados") ||
-    pathname.startsWith("/agencia")
+    pathname.startsWith("/agencia") ||
+    pathname.startsWith("/curriculo")
   ) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
@@ -77,5 +78,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/login", "/login-afiliados", "/login-agencia", "/painel/:path*", "/afiliados/:path*", "/agencia/:path*", "/api/:path*"],
+  matcher: ["/login", "/login-afiliados", "/login-agencia", "/painel/:path*", "/afiliados/:path*", "/agencia/:path*", "/curriculo/:path*", "/api/:path*"],
 };

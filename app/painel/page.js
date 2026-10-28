@@ -550,6 +550,7 @@ export default function PainelPage() {
         </nav>
 
         <div className="crm-nav-foot">
+          <Link href="/curriculo" style={{ fontWeight: "bold", color: "#38bdf8" }}>Currículo</Link>
           <Link href="/afiliados">CRM Afiliados</Link>
           <Link href="/agencia">CRM Agência</Link>
           <Link href="/">Formulário</Link>
