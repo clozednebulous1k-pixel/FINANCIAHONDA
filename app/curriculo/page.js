@@ -292,7 +292,7 @@ export default function CurriculoPage() {
           <section className="crm-card ag-card">
             <h2>Envio Automático de Currículo para Empresas</h2>
             <p className="crm-card-desc">
-              O robô percorre sua base de dados de empresas de TI, monta a saudação do período (Bom dia / Boa tarde), se apresenta como desenvolvedor web, anexa seu portfólio (dev-server0.vercel.app) e envia no ritmo seguro.
+              O robô percorre sua base de dados de empresas de TI, monta a saudação do período (Bom dia / Boa tarde), se apresenta como desenvolvedor web, anexa seu portfólio (potfolio-rxgy.vercel.app) e envia no ritmo seguro.
             </p>
 
             <div style={{ marginTop: "1rem", marginBottom: "1.5rem" }}>
