@@ -46,6 +46,8 @@ export async function POST(request) {
 
   const leadId = validarId(body?.leadId || "");
   const disparo = Boolean(body?.disparo);
+  const conta = body?.conta || "honda";
+  const colecao = body?.colecao || "leads";
   let reservado = false;
 
   if (disparo) {
@@ -53,8 +55,8 @@ export async function POST(request) {
       const reserva = await reservarDisparo({
         leadId,
         numero,
-        conta: "honda",
-        colecao: "leads",
+        conta,
+        colecao,
         statusOk: "aguardando_resposta",
       });
       if (reserva.skipped) {
@@ -79,7 +81,7 @@ export async function POST(request) {
   const ultimo = recentes.get(numero) || 0;
   if (agora - ultimo < COOLDOWN_MS) {
     if (reservado) {
-      await soltarDisparo({ leadId, numero, conta: "honda", colecao: "leads" });
+      await soltarDisparo({ leadId, numero, conta, colecao });
     }
     const espera = Math.ceil((COOLDOWN_MS - (agora - ultimo)) / 1000);
     return NextResponse.json(
@@ -92,11 +94,11 @@ export async function POST(request) {
 
   let data;
   try {
-    data = await enviarTexto(numero, texto);
+    data = await enviarTexto(numero, texto, conta);
   } catch (error) {
     recentes.delete(numero);
     if (reservado) {
-      await soltarDisparo({ leadId, numero, conta: "honda", colecao: "leads" });
+      await soltarDisparo({ leadId, numero, conta, colecao });
     }
     return NextResponse.json(
       { error: error.message || "Falha ao enviar" },
@@ -112,7 +114,8 @@ export async function POST(request) {
         numero,
         texto,
         messageId: idMensagemEvolution(data),
-        conta: "honda",
+        conta,
+        colecao,
         colecao: "leads",
         statusOk: "aguardando_resposta",
       });

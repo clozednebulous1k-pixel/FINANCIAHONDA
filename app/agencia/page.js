@@ -764,7 +764,19 @@ export default function AgenciaPage() {
               />
               <button type="submit" className="btn-chamar">Cadastrar na fila</button>
             </form>
-            {novos.length ? <p className="aff-resumo">Ainda não chamou</p> : null}
+            {escolhidos.length > 0 && (
+              <p style={{ marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  className="btn-chamar"
+                  disabled={disparando || !waConectado}
+                  onClick={() => dispararFila(escolhidos)}
+                >
+                  {disparando ? "Disparando..." : `⚡ Disparar para ${escolhidos.length} selecionada(s)`}
+                </button>
+              </p>
+            )}
+            {novos.length ? <p className="aff-resumo">Ainda não chamou ({novos.length})</p> : null}
             <ul className="aff-grupos">
               {novos.map((lead) => (
                 <li key={lead.id}>
@@ -784,18 +796,36 @@ export default function AgenciaPage() {
                       </small>
                     </span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      excluirLeadAgencia(lead.id, lead).then(() => setLeads((l) => l.filter((x) => x.id !== lead.id)))
-                    }
-                  >
-                    Apagar
-                  </button>
+                  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      disabled={disparando || !waConectado}
+                      onClick={() => dispararFila([lead])}
+                      style={{ padding: "0.3rem 0.6rem", borderRadius: "4px", background: "#0284c7", color: "#fff", border: "none", cursor: "pointer", fontSize: "0.8rem" }}
+                    >
+                      ⚡ Disparar
+                    </button>
+                    <a
+                      href={`https://wa.me/55${String(lead.whatsapp).replace(/\D/g, "")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ padding: "0.3rem 0.6rem", borderRadius: "4px", background: "#16a34a", color: "#fff", textDecoration: "none", fontSize: "0.8rem", fontWeight: "600" }}
+                    >
+                      🟢 Zap
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        excluirLeadAgencia(lead.id, lead).then(() => setLeads((l) => l.filter((x) => x.id !== lead.id)))
+                      }
+                    >
+                      Apagar
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
-            {chamados.length ? <p className="aff-resumo">Já chamou</p> : null}
+            {chamados.length ? <p className="aff-resumo">Já chamou ({chamados.length})</p> : null}
             <ul className="aff-grupos">
               {chamados.map((lead) => (
                 <li key={lead.id}>
@@ -808,14 +838,24 @@ export default function AgenciaPage() {
                       </small>
                     </span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      excluirLeadAgencia(lead.id, lead).then(() => setLeads((l) => l.filter((x) => x.id !== lead.id)))
-                    }
-                  >
-                    Apagar
-                  </button>
+                  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                    <a
+                      href={`https://wa.me/55${String(lead.whatsapp).replace(/\D/g, "")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ padding: "0.3rem 0.6rem", borderRadius: "4px", background: "#16a34a", color: "#fff", textDecoration: "none", fontSize: "0.8rem", fontWeight: "600" }}
+                    >
+                      🟢 Zap
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        excluirLeadAgencia(lead.id, lead).then(() => setLeads((l) => l.filter((x) => x.id !== lead.id)))
+                      }
+                    >
+                      Apagar
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

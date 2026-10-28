@@ -14,13 +14,13 @@ export const dynamic = "force-dynamic";
 const recentes = new Map();
 const COOLDOWN_MS = 85 * 1000;
 
-async function marcarSemWhatsapp(leadId, numero) {
+async function marcarSemWhatsapp(leadId, numero, conta = "agencia", colecao = "agencia_leads") {
   if (adminPronto()) {
     await confirmarDisparo({
       leadId,
       numero,
-      conta: "agencia",
-      colecao: "agencia_leads",
+      conta,
+      colecao,
       statusOk: "chamou",
     }).catch(() => {});
   }
@@ -46,6 +46,9 @@ export async function POST(request) {
   const texto = textoMensagem(body?.texto, 4000);
   const leadId = validarId(body?.leadId || "");
   const continuar = Number(body?.sequencia) > 0;
+  const colecao = body?.colecao === "curriculo_leads" ? "curriculo_leads" : "agencia_leads";
+  const conta = body?.conta || "agencia";
+
   if (!numero) {
     return NextResponse.json(
       { ok: true, skipped: true, motivo: "telefone fixo ou inválido" },
@@ -62,8 +65,8 @@ export async function POST(request) {
     const reserva = await reservarDisparo({
       leadId,
       numero: destino,
-      conta: "agencia",
-      colecao: "agencia_leads",
+      conta,
+      colecao,
       statusOk: "chamou",
     });
     if (reserva.skipped) {
@@ -82,7 +85,7 @@ export async function POST(request) {
   const ultimo = recentes.get(destino) || 0;
   if (!continuar && agora - ultimo < COOLDOWN_MS) {
     if (reservado) {
-      await soltarDisparo({ leadId, numero: destino, conta: "agencia", colecao: "agencia_leads" });
+      await soltarDisparo({ leadId, numero: destino, conta, colecao });
     }
     const espera = Math.ceil((COOLDOWN_MS - (agora - ultimo)) / 1000);
     return NextResponse.json(
@@ -95,16 +98,16 @@ export async function POST(request) {
 
   let data;
   try {
-    data = await enviarTexto(destino, texto, "agencia");
+    data = await enviarTexto(destino, texto, conta);
   } catch (error) {
     recentes.delete(destino);
     const msg = String(error.message || "");
     const semWa =
       error.status === 400 ||
       /não está no WhatsApp|bad request|exists:\s*false|not.*whatsapp/i.test(msg);
-    if (semWa) return marcarSemWhatsapp(leadId, destino);
+    if (semWa) return marcarSemWhatsapp(leadId, destino, conta, colecao);
     if (reservado) {
-      await soltarDisparo({ leadId, numero: destino, conta: "agencia", colecao: "agencia_leads" });
+      await soltarDisparo({ leadId, numero: destino, conta, colecao });
     }
     const amigavel = /aborted|abort|demorou|timeout/i.test(msg)
       ? "WhatsApp demorou. O automático tenta de novo."
@@ -117,8 +120,8 @@ export async function POST(request) {
       await confirmarDisparo({
         leadId,
         numero: destino,
-        conta: "agencia",
-        colecao: "agencia_leads",
+        conta,
+        colecao,
         statusOk: "chamou",
       });
     }

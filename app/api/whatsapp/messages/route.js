@@ -15,12 +15,13 @@ export async function GET(request) {
 
   const { searchParams } = new URL(request.url);
   const numero = telefoneE164(searchParams.get("whatsapp") || "");
+  const conta = searchParams.get("conta") || "honda";
   if (!numero) {
     return NextResponse.json({ error: "WhatsApp inválido" }, { status: 400 });
   }
 
   try {
-    const raw = await buscarMensagens(numero, Number(searchParams.get("limit") || 50));
+    const raw = await buscarMensagens(numero, Number(searchParams.get("limit") || 50), conta);
     const messages = normalizarMensagensEvolution(raw);
     return NextResponse.json({ ok: true, messages });
   } catch (error) {
