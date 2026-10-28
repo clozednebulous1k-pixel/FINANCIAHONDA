@@ -132,6 +132,8 @@ export default function LoginPage() {
         </button>
       </form>
       <p className="auth-switch">
+        Currículo? <Link href="/curriculo">Envio a empresas</Link>
+        {" · "}
         CRM de afiliados? <Link href="/login-afiliados">Entrar no disparo de links</Link>
         {" · "}
         Agência? <Link href="/login-agencia">Sites e sistemas</Link>

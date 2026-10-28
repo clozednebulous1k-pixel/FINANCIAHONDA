@@ -131,6 +131,8 @@ export default function LoginAgenciaPage() {
         </button>
       </form>
       <p className="auth-switch">
+        Currículo? <Link href="/curriculo">Envio a empresas</Link>
+        {" · "}
         CRM Honda? <Link href="/login">Entrar no painel de leads</Link>
         {" · "}
         Afiliados? <Link href="/login-afiliados">Disparo de links</Link>
