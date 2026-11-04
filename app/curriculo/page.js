@@ -646,7 +646,7 @@ export default function CurriculoPage() {
                   disabled={salvando}
                   style={{ padding: "0.5rem 1rem", borderRadius: "6px", background: "#0284c7", color: "#fff", border: "none", cursor: "pointer" }}
                 >
-                  {salvando ? "Importando..." : "Importar todas as 80 empresas da base"}
+                  {salvando ? "Importando..." : `Importar todas as ${LISTA_EMPRESAS_CURRICULO.length} empresas da base`}
                 </button>
               </div>
             </div>
@@ -743,7 +743,7 @@ export default function CurriculoPage() {
                   {leads.length === 0 && (
                     <tr>
                       <td colSpan={5} style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>
-                        Nenhuma empresa na fila. Clique em "Importar todas as 80 empresas da base" acima para preencher.
+                        Nenhuma empresa na fila. Clique em "Importar todas as empresas da base" acima para preencher.
                       </td>
                     </tr>
                   )}
