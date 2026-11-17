@@ -1,6 +1,6 @@
 :root {
-  --red: #c8102e;
-  --red-dark: #9b0c23;
+  --red: #0037c4;
+  --red-dark: #002280;
   --ink: #0f1115;
   --muted: #5c6470;
   --line: #e6e8ec;
@@ -46,7 +46,7 @@ a,
 .option,
 .card {
   touch-action: manipulation;
-  -webkit-tap-highlight-color: rgba(200, 16, 46, 0.12);
+  -webkit-tap-highlight-color: rgba(0, 55, 196, 0.12);
 }
 
 .bg-glow {
@@ -54,7 +54,7 @@ a,
   inset: 0 auto auto 0;
   width: 420px;
   height: 420px;
-  background: radial-gradient(circle, rgba(200, 16, 46, 0.16), transparent 70%);
+  background: radial-gradient(circle, rgba(0, 55, 196, 0.18), transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
@@ -197,7 +197,7 @@ h1 {
 .option:hover,
 .option:focus-visible {
   transform: translateY(-2px);
-  border-color: #f0b3bd;
+  border-color: #b3c5f0;
   outline: none;
 }
 
@@ -205,7 +205,7 @@ h1 {
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: #fdecef;
+  background: #eef3ff;
   color: var(--red);
   display: grid;
   place-items: center;
@@ -305,8 +305,8 @@ h1 {
   padding: 20px 18px 18px;
   border: 3px solid var(--red);
   border-radius: 18px;
-  background: #fff5f6;
-  box-shadow: 0 12px 32px rgba(200, 16, 46, 0.18);
+  background: #f4f7ff;
+  box-shadow: 0 12px 32px rgba(0, 55, 196, 0.16);
   display: grid;
   gap: 12px;
 }
@@ -373,7 +373,7 @@ h1 {
 
 .campo-telefone.is-bad input {
   border-color: var(--red);
-  background: #fff1f3;
+  background: #f0f4ff;
 }
 
 .telefone-status {
@@ -630,7 +630,7 @@ select {
 }
 
 .lead-table tr.is-edit {
-  background: #fff8f6;
+  background: #f4f7ff;
 }
 
 .cell-pair {
@@ -659,7 +659,7 @@ select {
 
 .row-actions .is-del {
   color: var(--red);
-  border-color: #f0c0c0;
+  border-color: #c0d0f0;
 }
 
 .lead-table .nowrap {
