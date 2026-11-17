@@ -152,7 +152,7 @@ export default function SituacaoCliente({ lead, onBack }) {
           <input
             value={form.modelo}
             onChange={(e) => setCampo("modelo", e.target.value)}
-            placeholder="Ex.: CG 160"
+            placeholder="Ex.: Fazer, Lander, NMAX"
             autoComplete="off"
           />
         </label>

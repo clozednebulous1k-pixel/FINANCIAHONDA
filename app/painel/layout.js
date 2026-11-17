@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "CRM Honda",
-  description: "Painel de leads e WhatsApp da Honda.",
+  title: "CRM Yamaha",
+  description: "Painel de leads e WhatsApp da Yamaha.",
   robots: { index: false, follow: false },
 };
 

@@ -7,7 +7,7 @@ import { useAuth } from "../../components/AuthProvider";
 import InboxConversas from "../../components/InboxConversas";
 import WhatsappStatus from "../../components/WhatsappStatus";
 import { delayAntiBanMs, montarAbordagem } from "../../lib/abordagens";
-import { atualizarLead, atualizarStatus, criarLead, excluirLead, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
+import { atualizarLead, atualizarStatus, criarLead, excluirLead, excluirTodosLeads, ouvirLeads, STATUS, whatsappLead } from "../../lib/leads";
 import { salvarMensagem, limparDuplicadasEmLeads, leadJaFoiChamado, jaEnviouMensagem } from "../../lib/mensagens";
 import { chaveWhatsapp, CNH_OPCOES, LIMITES, TIPOS_LEAD, crmDoEmail } from "../../lib/security";
 
@@ -297,6 +297,25 @@ export default function PainelPage() {
     }
   }
 
+  async function limparTodosLeadsAntigos() {
+    if (!window.confirm("Tem certeza que deseja apagar TODOS os leads antigos do CRM? Essa ação não pode ser desfeita.")) return;
+    const confirmacao = window.prompt("Digite LIMPAR para confirmar a exclusão de todos os clientes:");
+    if (confirmacao !== "LIMPAR") {
+      alert("Operação cancelada.");
+      return;
+    }
+    setErro("");
+    try {
+      setCarregandoLista(true);
+      const total = await excluirTodosLeads();
+      alert(`${total} leads foram apagados com sucesso! O CRM agora está pronto para novos clientes.`);
+    } catch (error) {
+      setErro("Não foi possível apagar todos os leads. Verifique a conexão com o Firebase.");
+    } finally {
+      setCarregandoLista(false);
+    }
+  }
+
   async function salvarEdicao() {
     if (!editandoId) return;
     setErro("");
@@ -520,9 +539,9 @@ export default function PainelPage() {
     <div className="crm-shell">
       <aside className="crm-nav">
         <div className="crm-brand">
-          <span className="crm-mark">H</span>
+          <span className="crm-mark">Y</span>
           <div>
-            <strong>Honda CRM</strong>
+            <strong>Yamaha CRM</strong>
             <small>{waConectado ? "WhatsApp on" : "WhatsApp off"}</small>
           </div>
         </div>
@@ -605,6 +624,14 @@ export default function PainelPage() {
                 ) : null}
                 <button type="button" onClick={() => setMostrarCadastro((v) => !v)}>
                   {mostrarCadastro ? "Fechar" : "+ Lead"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-chamar is-stop"
+                  onClick={limparTodosLeadsAntigos}
+                  title="Apagar todos os clientes antigos para começar do zero"
+                >
+                  Limpar clientes antigos
                 </button>
               </div>
             </header>

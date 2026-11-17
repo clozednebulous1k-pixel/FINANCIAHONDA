@@ -4,8 +4,8 @@ import Providers from "../components/Providers";
 import "./globals.css";
 
 export const metadata = {
-  title: "Honda · Fale com um consultor",
-  description: "Escolha financiamento, consórcio ou conhecer motos e fale com um consultor Honda.",
+  title: "Yamaha · Fale com um consultor",
+  description: "Escolha financiamento, consórcio ou conhecer motos e fale com um consultor Yamaha.",
 };
 
 export const viewport = {

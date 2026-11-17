@@ -94,8 +94,8 @@ export default function Formulario() {
   }
 
   useEffect(() => {
-    setNomeCliente(window.localStorage.getItem("honda-cliente-nome") || "");
-    setWhatsappCliente(window.localStorage.getItem("honda-cliente-whatsapp") || "");
+    setNomeCliente(window.localStorage.getItem("yamaha-cliente-nome") || window.localStorage.getItem("honda-cliente-nome") || "");
+    setWhatsappCliente(window.localStorage.getItem("yamaha-cliente-whatsapp") || window.localStorage.getItem("honda-cliente-whatsapp") || "");
   }, []);
 
   function iniciar(novoTipo) {
@@ -174,8 +174,8 @@ export default function Formulario() {
       } catch (error) {
         if (error.code !== "duplicado") throw error;
       }
-      window.localStorage.setItem("honda-cliente-nome", nome);
-      window.localStorage.setItem("honda-cliente-whatsapp", formatarWhatsapp(whatsapp));
+      window.localStorage.setItem("yamaha-cliente-nome", nome);
+      window.localStorage.setItem("yamaha-cliente-whatsapp", formatarWhatsapp(whatsapp));
       setDadosSalvos(true);
       setConfirmarTelefone(false);
       trackPixel("CompleteRegistration", { content_name: tipo });
@@ -192,9 +192,9 @@ export default function Formulario() {
 
       <header className="topbar">
         <button className="brand" type="button" onClick={irHome} aria-label="Voltar ao início">
-          <span className="brand-mark" aria-hidden="true">H</span>
+          <span className="brand-mark" aria-hidden="true">Y</span>
           <span className="brand-text">
-            <strong>HONDA</strong>
+            <strong>YAMAHA</strong>
             <small>Atendimento ao cliente</small>
           </span>
         </button>
@@ -344,7 +344,7 @@ export default function Formulario() {
       </main>
 
       <footer>
-        <p>Atendimento Honda · respostas vão direto para o consultor no WhatsApp</p>
+        <p>Atendimento Yamaha · respostas vão direto para o consultor no WhatsApp</p>
       </footer>
     </>
   );

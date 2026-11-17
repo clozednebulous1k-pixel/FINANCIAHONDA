@@ -200,7 +200,7 @@ export default function ChatCrm({ lead, embutido = false, onBack, onSituacao }) 
           <svg className="wa-empty-logo" viewBox="0 0 24 24" width="56" height="56" aria-hidden="true">
             <path fill="#54656f" d="M19.005 3.175H4.674C3.642 3.175 3 3.789 3 4.821V21.02l3.544-3.544h12.461c1.033 0 2.064-1.06 2.064-2.093V4.821c-.001-1.032-1.033-1.646-2.064-1.646zm-4.892 8.99h-6.04v-1.67h6.04v1.67zm2.822-3.768h-8.862V6.727h8.862v1.67z"/>
           </svg>
-          <h2>Honda WhatsApp</h2>
+          <h2>Yamaha WhatsApp</h2>
           <p>Envie e receba mensagens sem precisar manter o celular conectado na tela.</p>
           <p className="wa-empty-tip">Escolha uma conversa ao lado para começar.</p>
         </div>
@@ -291,7 +291,7 @@ export default function ChatCrm({ lead, embutido = false, onBack, onSituacao }) 
         <div className="wa-prontas">
           <div className="wa-prontas-head">
             <strong>Mensagens prontas</strong>
-            <span>Matheus Ormond · Honda 0km</span>
+            <span>Matheus Ormond · Yamaha 0km</span>
           </div>
           <div className="wa-prontas-list">
             {MENSAGENS_PRONTAS.map((item) => (
