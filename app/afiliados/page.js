@@ -308,7 +308,7 @@ export default function AfiliadosPage() {
       return;
     }
     if (!waConectado) {
-      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 95202-5568.");
+      setErro("WhatsApp desconectado. Vá em Conexão e leia o QR com o 11 92900-9134.");
       setMenu("conexao");
       return;
     }
@@ -411,7 +411,7 @@ export default function AfiliadosPage() {
             <strong>CRM Afiliados</strong>
             <small>
               {config.autoAtivo ? "Auto on · " : ""}
-              {waConectado ? "11 95202-5568 on" : "11 95202-5568 off"}
+              {waConectado ? "11 92900-9134 on" : "11 92900-9134 off"}
             </small>
           </div>
         </div>
@@ -533,14 +533,14 @@ export default function AfiliadosPage() {
             <div className="crm-pane-top-row">
               <div>
                 <h1>Grupos de achadinhos</h1>
-                <p>O celular 11 95202-5568 precisa estar nos grupos. Depois importe e deixe ativos.</p>
+                <p>O celular 11 92900-9134 precisa estar nos grupos. Depois importe e deixe ativos.</p>
               </div>
               <button type="button" className="btn-chamar" onClick={importarGruposWa} disabled={syncGrupos || !waConectado}>
                 {syncGrupos ? "Importando…" : "Importar grupos do WhatsApp"}
               </button>
             </div>
             <ol className="aff-passos">
-              <li>Entre nos grupos de achadinhos / promoções com o <strong>11 95202-5568</strong> (ou crie os seus).</li>
+              <li>Entre nos grupos de achadinhos / promoções com o <strong>11 92900-9134</strong> (ou crie os seus).</li>
               <li>Conecte o WhatsApp em <strong>Conexão</strong>.</li>
               <li>Clique em <strong>Importar grupos do WhatsApp</strong> e deixe ativos só os que vão receber oferta.</li>
               <li>No Robô, escolha 1 produto e clique em <strong>Postar nos grupos</strong>.</li>
@@ -759,7 +759,7 @@ export default function AfiliadosPage() {
           <section className="crm-pane">
             <div className="crm-pane-top">
               <h1>Conexão WhatsApp</h1>
-              <p>Este CRM usa o seu celular <strong>11 95202-5568</strong>. O CRM Honda continua no 11 94753-9917.</p>
+              <p>Este CRM usa o seu celular <strong>11 92900-9134</strong>. O CRM Yamaha continua no 11 94753-9917.</p>
             </div>
             <WhatsappStatus conta="afiliados" onConnected={setWaConectado} />
           </section>

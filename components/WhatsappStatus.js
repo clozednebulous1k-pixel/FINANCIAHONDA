@@ -37,7 +37,7 @@ export default function WhatsappStatus({ onConnected, conta = "honda", intervalo
   const conectado = Boolean(info?.connected);
   const qr = info?.qrcode;
   const titulo = info?.titulo || (conta === "afiliados" ? "WhatsApp Afiliados" : conta === "agencia" ? "WhatsApp Agência" : "WhatsApp Business");
-  const numero = info?.numeroFormatado || (conta === "afiliados" || conta === "agencia" ? "11 95202-5568" : "11 94753-9917");
+  const numero = info?.numeroFormatado || (conta === "afiliados" ? "11 92900-9134" : conta === "agencia" ? "11 95202-5568" : "11 94753-9917");
 
   return (
     <section className="painel-card wa-status-card">
@@ -65,9 +65,11 @@ export default function WhatsappStatus({ onConnected, conta = "honda", intervalo
       {!conectado && qr ? (
         <div className="wa-qr-box">
           <p>
-            {conta === "afiliados" || conta === "agencia"
-              ? "No celular 11 95202-5568: WhatsApp → Aparelhos conectados → Conectar aparelho"
-              : "No celular: WhatsApp Business → Aparelhos conectados → Conectar aparelho"}
+            {conta === "afiliados"
+              ? "No celular 11 92900-9134: WhatsApp → Aparelhos conectados → Conectar aparelho"
+              : conta === "agencia"
+                ? "No celular 11 95202-5568: WhatsApp → Aparelhos conectados → Conectar aparelho"
+                : "No celular: WhatsApp Business → Aparelhos conectados → Conectar aparelho"}
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
